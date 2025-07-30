@@ -141,14 +141,12 @@ if st.session_state["calculated"]:
         else:
             st.warning("이미 20레벨입니다. 목표 시뮬레이션은 생략됩니다.")
 
-    # ----------- 결과 JSON 생성 및 localStorage 저장 기능 추가 -----------
-    # 사용자 이름 입력 (저장용)
-    user_name = st.text_input("저장할 이름을 입력하세요", max_chars=20)
-
-    # 결과 JSON 만들기
+    # ---------- 결과 JSON 생성 및 session_state 저장 ----------
     result_obj = {
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "name": user_name if user_name else "무명",
+        "name": "무명",
+        "category": category,
+        "level": level,
         "total": user_total,
         "detail": {
             a_stat: a,
@@ -157,62 +155,62 @@ if st.session_state["calculated"]:
             d_stat: d,
         }
     }
-    st.session_state["result_json"] = json.dumps(result_obj, ensure_ascii=False)
+    st.session_state["result_json"] = json.dumps(result_obj)
 
-    # localStorage 저장 및 기록 보여주는 JS 코드
-    js_code = f"""
-    <script>
-    const result = {st.session_state.get("result_json", "null")};
+# ---------- 저장 및 기록 출력 JS ----------
+result_json = st.session_state.get("result_json", "null")
 
-    function saveResult() {{
-        if(!result) {{
-            alert('저장할 결과가 없습니다.');
-            return;
-        }}
-        let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
+js_code = f"""
+<script>
+const result = {result_json};
 
-        // 중복 기록 방지
-        let isDuplicate = history.some(h =>
-            h.name === result.name &&
-            h.total === result.total &&
-            JSON.stringify(h.detail) === JSON.stringify(result.detail)
-        );
-        if (isDuplicate) {{
-            alert('이미 같은 기록이 존재합니다.');
-            return;
-        }}
+function saveResult() {{
+    if (!result) {{
+        alert('저장할 결과가 없습니다.');
+        return;
+    }}
+    let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
 
-        history.push(result);
-        history.sort((a, b) => new Date(b.time) - new Date(a.time));
-        localStorage.setItem('petSimHistory', JSON.stringify(history));
-        alert('저장 완료!');
-        showHistory();
+    let isDuplicate = history.some(h =>
+        h.name === result.name &&
+        h.total === result.total &&
+        JSON.stringify(h.detail) === JSON.stringify(result.detail)
+    );
+    if (isDuplicate) {{
+        alert('이미 같은 기록이 있습니다.');
+        return;
     }}
 
-    function showHistory() {{
-        let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
-        if(history.length === 0) {{
-            document.getElementById('history').innerHTML = '기록이 없습니다.';
-            return;
-        }}
+    history.push(result);
+    history.sort((a,b) => new Date(b.time) - new Date(a.time));
+    localStorage.setItem('petSimHistory', JSON.stringify(history));
+    alert('저장 완료!');
 
-        let html = '<ul>';
-        for(let i=0; i<history.length; i++) {{
-            let r = history[i];
-            html += `<li><b>${{r.name}}</b> (${{r.time}}) - 총합: ${{r.total}} (` +
-                    `인내력:${{r.detail['인내력']}}, 충성심:${{r.detail['충성심']}}, 속도:${{r.detail['속도']}}, 체력:${{r.detail['체력']}})</li>`;
-        }}
-        html += '</ul>';
-        document.getElementById('history').innerHTML = html;
+    showHistory();
+}}
+
+function showHistory() {{
+    let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
+    if(history.length === 0) {{
+        document.getElementById('history').innerHTML = '기록이 없습니다.';
+        return;
     }}
+    let html = '<ul>';
+    for(let i=0; i<history.length; i++) {{
+        let r = history[i];
+        html += `<li><b>${{r.name}}</b> (${{r.time}}) - 총합: ${{r.total}} (인내력:${{r.detail['인내력']}}, 충성심:${{r.detail['충성심']}}, 속도:${{r.detail['속도']}}, 체력:${{r.detail['체력']}})</li>`;
+    }}
+    html += '</ul>';
+    document.getElementById('history').innerHTML = html;
+}}
 
-    window.onload = function() {{
-        showHistory();
-    }};
-    </script>
+window.onload = function() {{
+    showHistory();
+}};
+</script>
 
-    <button onclick="saveResult()">💾 저장하기 (localStorage)</button>
-    <div id="history" style="margin-top:10px; font-weight:bold;"></div>
-    """
+<button onclick="saveResult()">💾 저장하기 (localStorage)</button>
+<div id="history" style="margin-top:10px; font-weight:bold;"></div>
+"""
 
-    components.html(js_code, height=350)
+components.html(js_code, height=400)
