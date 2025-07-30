@@ -24,6 +24,8 @@ if "calculated" not in st.session_state:
     st.session_state["calculated"] = False
 if "result_json" not in st.session_state:
     st.session_state["result_json"] = None
+if "loaded_record" not in st.session_state:
+    st.session_state["loaded_record"] = None
 
 # ---------- 종 정보 ----------
 d_stat_map = {
@@ -34,20 +36,45 @@ d_stat_map = {
 }
 stat_order = ["인내력", "충성심", "속도", "체력"]
 
-# ---------- 입력 ----------
-category = st.selectbox("\U0001F436 견종 선택", list(d_stat_map.keys()))
-d_stat = d_stat_map[category]
-remaining_stats = [s for s in stat_order if s != d_stat]
-a_stat, b_stat, c_stat = remaining_stats
+# ---------- 불러오기용 JSON 텍스트박스 ----------
+st.markdown("### 저장된 기록 불러오기")
+loaded_text = st.text_area("불러올 기록 JSON을 여기에 붙여넣으세요", height=150, value=st.session_state["loaded_record"] or "")
+if loaded_text:
+    try:
+        loaded_obj = json.loads(loaded_text)
+        # 불러온 기록에서 입력값만 추출해서 변수에 저장
+        category = loaded_obj.get("category", list(d_stat_map.keys())[0])
+        level = loaded_obj.get("level", 2)
+        detail = loaded_obj.get("detail", {})
+        # 기본값으로 없는 항목 0 처리
+        a_stat = [s for s in stat_order if s != d_stat_map.get(category, "")][0]
+        b_stat = [s for s in stat_order if s != d_stat_map.get(category, "")][1]
+        c_stat = [s for s in stat_order if s != d_stat_map.get(category, "")][2]
+        d_stat = d_stat_map.get(category, "충성심")
+        a = detail.get(a_stat, 6)
+        b = detail.get(b_stat, 6)
+        c = detail.get(c_stat, 6)
+        d = detail.get(d_stat, 14)
+        st.session_state["loaded_record"] = loaded_text
+    except Exception as e:
+        st.error(f"JSON 파싱 실패: {e}")
+else:
+    # 기본 입력값
+    category = st.selectbox("\U0001F436 견종 선택", list(d_stat_map.keys()))
+    d_stat = d_stat_map[category]
+    remaining_stats = [s for s in stat_order if s != d_stat]
+    a_stat, b_stat, c_stat = remaining_stats
 
-exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
+    exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
 
-col1, col2 = st.columns(2)
-level = col1.number_input("레벨 (2 이상)", min_value=2, value=2, step=1)
-a = col1.number_input(f"{a_stat} 수치", min_value=0, value=6, step=1)
-b = col2.number_input(f"{b_stat} 수치", min_value=0, value=6, step=1)
-c = col1.number_input(f"{c_stat} 수치", min_value=0, value=6, step=1)
-d = col2.number_input(f"{d_stat} 수치", min_value=0, value=14, step=1)
+    col1, col2 = st.columns(2)
+    level = col1.number_input("레벨 (2 이상)", min_value=2, value=2, step=1)
+    a = col1.number_input(f"{a_stat} 수치", min_value=0, value=6, step=1)
+    b = col2.number_input(f"{b_stat} 수치", min_value=0, value=6, step=1)
+    c = col1.number_input(f"{c_stat} 수치", min_value=0, value=6, step=1)
+    d = col2.number_input(f"{d_stat} 수치", min_value=0, value=14, step=1)
+
+    exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
 
 # ---------- 시뮬레이션용 상수 ----------
 num_sim = 100_000
@@ -198,10 +225,19 @@ function showHistory() {{
     let html = '<ul>';
     for(let i=0; i<history.length; i++) {{
         let r = history[i];
-        html += `<li><b>${{r.name}}</b> (${{r.time}}) - 총합: ${{r.total}} (인내력:${{r.detail['인내력']}}, 충성심:${{r.detail['충성심']}}, 속도:${{r.detail['속도']}}, 체력:${{r.detail['체력']}})</li>`;
+        html += `<li>
+            <b>${{r.name}}</b> (${{r.time}}) - 총합: ${{r.total}}
+            <button onclick='loadRecord(${i})'>불러오기</button>
+        </li>`;
     }}
     html += '</ul>';
     document.getElementById('history').innerHTML = html;
+}}
+
+function loadRecord(index) {{
+    let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
+    let record = history[index];
+    document.getElementById('loadResult').value = JSON.stringify(record, null, 2);
 }}
 
 window.onload = function() {{
@@ -211,6 +247,7 @@ window.onload = function() {{
 
 <button onclick="saveResult()">💾 저장하기 (localStorage)</button>
 <div id="history" style="margin-top:10px; font-weight:bold;"></div>
+<textarea id="loadResult" rows="10" style="width:100%; margin-top:10px;" readonly></textarea>
 """
 
 components.html(js_code, height=400)
