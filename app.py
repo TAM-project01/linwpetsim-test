@@ -157,18 +157,18 @@ if st.session_state["calculated"]:
     }
     st.session_state["result_json"] = json.dumps(result_obj)
 
-# ---------- 저장 및 기록 출력 JS ----------
+# ---------- 저장 및 불러오기 JS 코드 ----------
 result_json = st.session_state.get("result_json", "null")
 
-js_code = f"""
+js_code = """
 <script>
-const result = {result_json};
+const result = """ + result_json + """;
 
-function saveResult() {{
-    if (!result) {{
+function saveResult() {
+    if (!result) {
         alert('저장할 결과가 없습니다.');
         return;
-    }}
+    }
     let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
 
     let isDuplicate = history.some(h =>
@@ -176,10 +176,10 @@ function saveResult() {{
         h.total === result.total &&
         JSON.stringify(h.detail) === JSON.stringify(result.detail)
     );
-    if (isDuplicate) {{
+    if (isDuplicate) {
         alert('이미 같은 기록이 있습니다.');
         return;
-    }}
+    }
 
     history.push(result);
     history.sort((a,b) => new Date(b.time) - new Date(a.time));
@@ -187,38 +187,40 @@ function saveResult() {{
     alert('저장 완료!');
 
     showHistory();
-}}
+}
 
-function showHistory() {{
+function showHistory() {
     let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
-    if(history.length === 0) {{
-        document.getElementById('history_buttons').innerHTML = '저장된 기록이 없습니다.';
+    let container = document.getElementById('history_buttons');
+    if(!container) return;
+
+    if(history.length === 0) {
+        container.innerHTML = '저장된 기록이 없습니다.';
         return;
-    }}
+    }
     let html = '';
-    for(let i=0; i<history.length; i++) {{
+    for(let i=0; i<history.length; i++) {
         let r = history[i];
-        html += `<button onclick="loadHistoryItem(${i})" style="margin:2px;">${{{{r.name || '무명'}}}} (${{{{r.time}}}}) 총합: ${{{{r.total}}}}</button><br/>`;
-    }}
-    document.getElementById('history_buttons').innerHTML = html;
-}}
+        html += `<button onclick="loadHistoryItem(${i})" style="margin:2px;">${r.name || '무명'} (${r.time}) 총합: ${r.total}</button><br/>`;
+    }
+    container.innerHTML = html;
+}
 
-function loadHistoryItem(idx) {{
+function loadHistoryItem(idx) {
     let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
-    if (history.length > idx) {{
+    if (history.length > idx) {
         let item = history[idx];
-        // Streamlit 텍스트박스에 JSON 문자열 채우기
         const textarea = window.parent.document.querySelector('textarea');
-        if (textarea) {{
+        if (textarea) {
             textarea.value = JSON.stringify(item, null, 2);
-            textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
-        }}
-    }}
-}}
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+}
 
-window.onload = function() {{
+window.onload = function() {
     showHistory();
-}};
+};
 </script>
 
 <button onclick="saveResult()">💾 저장하기 (localStorage)</button>
