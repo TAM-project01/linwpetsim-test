@@ -149,11 +149,11 @@ st.subheader("펫 현재 정보 (펫 타운 및 특기가 포함된 스탯 입�
 col1, col2 = st.columns(2)
 level = col1.number_input("펫 레벨 (1 이상)", min_value=1, value=1, step=1)
 input_stats = {}
-input_stats[a_stat_name] = col1.number_input(f"{a_stat_name} 수치", min_value=0, value=base_stats_initial[a_stat_name], step=1)
-input_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 수치", min_value=0, value=base_stats_initial[b_stat_name], step=1)
-input_stats[c_stat_name] = col1.number_input(f"{c_stat_name} 수치", min_value=0, value=base_stats_initial[c_stat_name], step=1)
-input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1)
-input_stats["적극성"] = st.number_input(f"적극성 수치", min_value=3, value=base_stats_initial["적극성"], step=1)
+input_stats[a_stat_name] = col1.number_input(f"{a_stat_name} 수치", min_value=0, value=base_stats_initial[a_stat_name], step=1, key=f"input_{a_stat_name}")
+input_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 수치", min_value=0, value=base_stats_initial[b_stat_name], step=1, key=f"input_{b_stat_name}")
+input_stats[c_stat_name] = col1.number_input(f"{c_stat_name} 수치", min_value=0, value=base_stats_initial[c_stat_name], step=1, key=f"input_{c_stat_name}")
+input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1, key=f"input_{d_stat}")
+input_stats["적극성"] = st.number_input(f"적극성 수치", min_value=3, value=base_stats_initial["적극성"], step=1, key="input_적극성")
 
 st.subheader("펫 타운 시설 레벨")
 management_office_level = st.slider("관리소 레벨", min_value=0, max_value=20, value=0, step=1, key="mo_level")
@@ -164,40 +164,48 @@ fence_level = st.slider("울타리 레벨", min_value=0, max_value=20, value=0, 
 
 st.subheader("특기")
 
-def render_specialty_section(title, category_key, specialty_options, max_stage):
-    st.markdown(f"#### {title} 특기 ({category_key.split('_')[0].capitalize()})")
+def render_specialty_section(title, category_session_key, specialty_options, max_stage):
+    st.markdown(f"#### {title} 특기")
     
-    # 세션 상태에 해당 카테고리 특기 리스트가 없으면 초기화
-    if category_key not in st.session_state:
-        st.session_state[category_key] = []
+    # 세션 상태에 해당 카테고리 특기 리스트가 없으면 초기화 (이전 코드에서 이미 초기화됨)
+    # if category_session_key not in st.session_state:
+    #     st.session_state[category_session_key] = []
+
+    # selectbox의 현재 인덱스를 세션 상태에 저장 (초기화를 위함)
+    if f"{category_session_key}_add_select_idx" not in st.session_state:
+        st.session_state[f"{category_session_key}_add_select_idx"] = 0
 
     col_select, col_add = st.columns([0.7, 0.3])
     with col_select:
         selected_specialty_to_add = st.selectbox(
-            f"추가할 {title} 특기 선택", 
+            f"추가할 특기 선택", 
             ["선택하세요"] + specialty_options, 
-            key=f"{category_key}_add_select"
+            key=f"{category_session_key}_add_select",
+            index=st.session_state[f"{category_session_key}_add_select_idx"] # 인덱스 사용
         )
     with col_add:
         st.write("") # 공간 확보용
-        if st.button(f"{title} 특기 추가", key=f"{category_key}_add_btn"):
+        if st.button(f"{title} 특기 추가", key=f"{category_session_key}_add_btn"):
             if selected_specialty_to_add != "선택하세요":
-                st.session_state[category_key].append(
-                    {"type": selected_specialty_to_add, "stage": 0, "id": len(st.session_state[category_key])}
+                st.session_state[category_session_key].append(
+                    {"type": selected_specialty_to_add, "stage": 0, "id": pd.Timestamp.now().timestamp()} # 고유 ID 생성
                 )
-                # 새로운 특기 추가 후 selectbox 초기화
-                st.session_state[f"{category_key}_add_select"] = "선택하세요" 
+                # 특기 추가 후 selectbox 초기화를 위해 인덱스 0으로 설정
+                st.session_state[f"{category_session_key}_add_select_idx"] = 0 
+                st.rerun() # 변경 사항 즉시 반영
             else:
                 st.warning("추가할 특기를 선택해주세요.")
 
-    # 추가된 특기들을 렌더링
     st.markdown("---")
-    if not st.session_state[category_key]:
+    if not st.session_state[category_session_key]:
         st.info("현재 추가된 특기가 없습니다.")
     
-    # 변경된 특기 리스트를 임시 저장
-    updated_specialties = []
-    for i, spec in enumerate(st.session_state[category_key]):
+    # 삭제 처리를 위한 임시 리스트
+    specialties_to_keep = []
+    for i, spec in enumerate(st.session_state[category_session_key]):
+        # 각 특기 인스턴스의 고유 키
+        instance_key = f"{category_session_key}_{spec['type']}_{spec['id']}"
+
         col_spec_name, col_spec_stage, col_spec_delete = st.columns([0.4, 0.4, 0.2])
         with col_spec_name:
             st.write(f"**{spec['type']}**")
@@ -205,39 +213,38 @@ def render_specialty_section(title, category_key, specialty_options, max_stage):
             current_stage = st.slider(
                 f"{spec['type']} 단계", 
                 min_value=0, max_value=max_stage, value=spec["stage"], 
-                key=f"{category_key}_{spec['type']}_{spec['id']}_stage"
+                key=f"{instance_key}_stage" # 고유 키 사용
             )
             spec["stage"] = current_stage # 슬라이더 변경 사항 반영
         with col_spec_delete:
             st.write("") # 공간 확보용
-            if st.button("삭제", key=f"{category_key}_{spec['type']}_{spec['id']}_delete"):
-                # 삭제할 항목의 인덱스 대신 ID로 필터링 (고유성 유지)
-                pass # 실제 삭제는 아래에서 필터링하여 수행
+            if st.button("삭제", key=f"{instance_key}_delete"): # 고유 키 사용
+                st.session_state[category_session_key].remove(spec) # 리스트에서 해당 객체 제거
+                st.rerun() # 변경 사항 즉시 반영
             else:
-                updated_specialties.append(spec)
-    
-    # 삭제 버튼이 눌렸을 경우 실제 리스트 업데이트 (새로운 리스트로 대체)
-    if len(st.session_state[category_key]) != len(updated_specialties):
-        st.session_state[category_key] = updated_specialties
-        st.rerun() # 상태 변경 후 재실행하여 UI 업데이트
+                specialties_to_keep.append(spec) # 삭제되지 않은 특기만 유지
+
+    # 렌더링 루프 밖에서 리스트 최종 업데이트 (rerun이 발생하지 않은 경우)
+    st.session_state[category_session_key] = specialties_to_keep
+
 
 st.markdown("---")
 
 # 노비스 특기 (4레벨 돌파)
 novice_specialty_types = [s for s in specialty_rewards_by_type_and_stage if s.startswith("노비스")]
-render_specialty_section("노비스", "novice_specialties", novice_specialty_types, 3) # 노비스 특기는 최대 3단계
+render_specialty_section("노비스 (4레벨 돌파)", "novice_specialties", novice_specialty_types, 3) # 노비스 특기는 최대 3단계
 
 st.markdown("---")
 
 # 비기너 특기 (9레벨 돌파)
 beginner_specialty_types = [s for s in specialty_rewards_by_type_and_stage if s.startswith("비기너")]
-render_specialty_section("비기너", "beginner_specialties", beginner_specialty_types, 4) # 비기너 특기는 최대 4단계
+render_specialty_section("비기너 (9레벨 돌파)", "beginner_specialties", beginner_specialty_types, 4) # 비기너 특기는 최대 4단계
 
 st.markdown("---")
 
 # 레이즈 특기 (14레벨 돌파)
 raise_specialty_types = [s for s in specialty_rewards_by_type_and_stage if s.startswith("레이즈")]
-render_specialty_section("레이즈", "raise_specialties", raise_specialty_types, 5) # 레이즈 특기는 최대 5단계
+render_specialty_section("레이즈 (14레벨 돌파)", "raise_specialties", raise_specialty_types, 5) # 레이즈 특기는 최대 5단계
 
 st.markdown("---")
 
