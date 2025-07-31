@@ -33,7 +33,7 @@ d_stat_map = {
     "늑대": "체력"
 }
 stat_order = ["인내력", "충성심", "속도", "체력"]
-# 적극성은 stat_order에 없으므로, 별도로 관리
+# 적극성은 stat_order에 없으므로, 별도로 관리 (입력 필드, 순수 스탯 계산, 시설/특기 보너스 계산에는 포함)
 all_stats_for_pure_calculation = ["인내력", "충성심", "속도", "체력", "적극성"] 
 
 base_stats_initial = {"인내력": 6, "충성심": 6, "속도": 6, "체력": 6, "적극성": 3} # Default base for non-main stat
@@ -148,7 +148,7 @@ input_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 수치", min_value=
 input_stats[c_stat_name] = col1.number_input(f"{c_stat_name} 수치", min_value=0, value=base_stats_initial[c_stat_name], step=1)
 input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1)
 
-# 적극성 스탯 입력 필드 추가
+# 적극성 스탯 입력 필드 추가 (사용자 입력을 받지만, 펫 스탯 총합 계산에는 포함되지 않음)
 input_stats["적극성"] = st.number_input(
     f"적극성 수치 (고정값 + 펫 타운 + 특기 포함)",
     min_value=0,
@@ -329,14 +329,14 @@ if st.session_state["calculated"]:
         df_data["상위 % (순수 스탯 기준)"].append(f"{individual_percentiles[stat_name]:.2f}%")
         df_data["펫 레벨당 평균 증가량 (시설물/특기 제외)"].append(f"+{avg_increases[stat_name]:.2f}")
 
-    # Add Activeness separately
+    # Add Activeness separately (since it's not part of stat_order for level-up simulation)
     df_data["스탯"].append("적극성")
     df_data["입력 수치 (펫 타운/특기 포함)"].append(input_stats["적극성"])
     df_data["순수 펫 스탯 (펫 타운/특기 제외)"].append(user_pure_stats["적극성"])
     df_data["펫 타운으로 인한 증가량"].append(total_facility_bonuses["적극성"])
     df_data["특기로 인한 증가량"].append(total_specialty_bonuses["적극성"])
-    df_data["상위 % (순수 스탯 기준)"].append("N/A")
-    df_data["펫 레벨당 평균 증가량 (시설물/특기 제외)"].append("N/A")
+    df_data["상위 % (순수 스탯 기준)"].append("N/A") # 적극성은 시뮬레이션되지 않으므로 N/A
+    df_data["펫 레벨당 평균 증가량 (시설물/특기 제외)"].append("N/A") # 적극성은 레벨업으로 증가하지 않음
 
     df = pd.DataFrame(df_data)
     st.table(df)
@@ -364,9 +364,7 @@ if st.session_state["calculated"]:
         target_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 목표값", min_value=0, value=35, step=1)
         target_stats[c_stat_name] = col3.number_input(f"{c_stat_name} 목표값", min_value=0, value=35, step=1)
         target_stats[d_stat] = col4.number_input(f"{d_stat} 목표값 (주 스탯)", min_value=0, value=100, step=1)
-        # 적극성 목표값 입력은 유지하되, 확률 계산에서는 제외
-        _ = st.number_input(f"적극성 목표값 (확률 계산에 포함되지 않음)", min_value=0, value=3, step=1)
-
+        # 적극성 목표값 입력 칸은 완전히 제거
 
         remaining_upgrades = 20 - level
         if remaining_upgrades >= 0: # Can reach 20 or already at 20+
@@ -383,7 +381,7 @@ if st.session_state["calculated"]:
 
             # Add facility and specialty bonuses to the simulated 20-level pure stats to compare with target (which is total stat)
             sim_final_at_20 = {}
-            for stat_name in stat_order:
+            for stat_name in stat_order: # 적극성 제외
                 sim_final_at_20[stat_name] = sim_pure_at_20[stat_name] + total_facility_bonuses[stat_name] + total_specialty_bonuses[stat_name]
             
             # 확률 계산
