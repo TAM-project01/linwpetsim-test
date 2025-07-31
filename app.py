@@ -87,21 +87,21 @@ specialty_rewards_by_type_and_stage = {
     "노비스 링크리지": {0: {}, 1: {"충성심": 1}, 2: {"충성심": 2}, 3: {"충성심": 3}},
     "노비스 래피드": {0: {}, 1: {"속도": 1}, 2: {"속도": 2}, 3: {"속도": 3}},
 
-    "노비스 포커싱": {0: {}, 1: {"적극성": 1}, 2: {"적극성": 2}, 3: {"적극성": 3}}, # 적극성 추가
+    "노비스 포커싱": {0: {}, 1: {"적극성": 1}, 2: {"적극성": 2}, 3: {"적극성": 3}},
 
     "비기너 에너지": {0: {}, 1: {"체력": 1}, 2: {"체력": 2}, 3: {"체력": 3}, 4: {"체력": 5}},
     "비기너 터내서티": {0: {}, 1: {"인내력": 1}, 2: {"인내력": 2}, 3: {"인내력": 3}, 4: {"인내력": 5}},
     "비기너 링크리지": {0: {}, 1: {"충성심": 1}, 2: {"충성심": 2}, 3: {"충성심": 3}, 4: {"충성심": 5}},
     "비기너 래피드": {0: {}, 1: {"속도": 1}, 2: {"속도": 3}, 3: {"속도": 5}, 4: {"속도": 5}},
 
-    "비기너 포커싱": {0: {}, 1: {"적극성": 1}, 2: {"적극성": 2}, 3: {"적극성": 3}, 4: {"적극성": 4}}, # 적극성 추가
+    "비기너 포커싱": {0: {}, 1: {"적극성": 1}, 2: {"적극성": 2}, 3: {"적극성": 3}, 4: {"적극성": 4}},
 
     "레이즈 에너지": {0: {}, 1: {"체력": 1}, 2: {"체력": 2}, 3: {"체력": 3}, 4: {"체력": 4}, 5: {"체력": 5}},
     "레이즈 터내서티": {0: {}, 1: {"인내력": 1}, 2: {"인내력": 2}, 3: {"인내력": 3}, 4: {"인내력": 4}, 5: {"인내력": 5}},
     "레이즈 링크리지": {0: {}, 1: {"충성심": 1}, 2: {"충성심": 2}, 3: {"충성심": 3}, 4: {"충성심": 4}, 5: {"충성심": 5}},
     "레이즈 래피드": {0: {}, 1: {"속도": 1}, 2: {"속도": 2}, 3: {"속도": 3}, 4: {"속도": 4}, 5: {"속도": 5}},
 
-    "레이즈 포커싱": {0: {}, 1: {"적극성": 1}, 2: {"적극성": 2}, 3: {"적극성": 3}, 4: {"적극성": 4}, 5: {"적극성": 5}}, # 적극성 추가
+    "레이즈 포커싱": {0: {}, 1: {"적극성": 1}, 2: {"적극성": 2}, 3: {"적극성": 3}, 4: {"적극성": 4}, 5: {"적극성": 5}},
 }
 
 def calculate_accumulated_facility_stats(facility_name, level):
@@ -140,6 +140,7 @@ a_input = col1.number_input(f"{a_stat} 수치", min_value=0, value=base_stats_in
 b_input = col2.number_input(f"{b_stat} 수치", min_value=0, value=base_stats_initial[b_stat], step=1)
 c_input = col1.number_input(f"{c_stat} 수치", min_value=0, value=base_stats_initial[c_stat], step=1)
 d_input = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1)
+st.markdown(f"**적극성: {base_stats_initial['적극성']}** (레벨 무관 고정값)")
 
 
 st.subheader("펫 타운 시설 레벨")
@@ -352,7 +353,6 @@ if st.session_state["calculated"]:
         target_b = col2.number_input(f"{b_stat} 목표값", min_value=0, value=35, step=1)
         target_c = col3.number_input(f"{c_stat} 목표값", min_value=0, value=35, step=1)
         target_d = col4.number_input(f"{d_stat} 목표값 (주 스탯)", min_value=0, value=100, step=1)
-        # target_active = st.number_input(f"적극성 목표값", min_value=0, value=3, step=1) # 적극성 목표값 제거
 
         remaining_upgrades = 20 - level
         if remaining_upgrades >= 0: # Can reach 20 or already at 20+
@@ -374,24 +374,21 @@ if st.session_state["calculated"]:
             sim_b_at_20_final = sim_b_at_20_pure + total_facility_bonuses[b_stat] + total_specialty_bonuses[b_stat]
             sim_c_at_20_final = sim_c_at_20_pure + total_facility_bonuses[c_stat] + total_specialty_bonuses[c_stat]
             sim_d_at_20_final = sim_d_at_20_pure + total_facility_bonuses[d_stat] + total_specialty_bonuses[d_stat]
-            # sim_active_at_20_final = base_stats_initial["적극성"] + total_facility_bonuses["적극성"] + total_specialty_bonuses["적극성"] # 적극성 시뮬레이션 결과값 제거
 
             p_a = np.mean(sim_a_at_20_final >= target_a) * 100
             p_b = np.mean(sim_b_at_20_final >= target_b) * 100
             p_c = np.mean(sim_c_at_20_final >= target_c) * 100
             p_d = np.mean(sim_d_at_20_final >= target_d) * 100
-            # p_active = np.mean(sim_active_at_20_final >= target_active) * 100 # 적극성 확률 계산 제거
 
             p_all = np.mean((sim_a_at_20_final >= target_a) & 
                             (sim_b_at_20_final >= target_b) & 
                             (sim_c_at_20_final >= target_c) & 
-                            (sim_d_at_20_final >= target_d)) * 100 # 모든 목표에 적극성 제외
+                            (sim_d_at_20_final >= target_d)) * 100
 
             st.write(f"\U0001F539 {a_stat} 목표 도달 확률: **{p_a:.2f}%**")
             st.write(f"\U0001F539 {b_stat} 목표 도달 확률: **{p_b:.2f}%**")
             st.write(f"\U0001F539 {c_stat} 목표 도달 확률: **{p_c:.2f}%**")
             st.write(f"\U0001F539 {d_stat} (주 스탯) 목표 도달 확률: **{p_d:.2f}%**")
-            # st.write(f"\U0001F539 적극성 목표 도달 확률: **{p_active:.2f}%**") # 적극성 확률 출력 제거
             st.success(f"\U0001F3C6 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
         else:
             st.warning("펫 레벨이 이미 20을 초과했습니다. 20레벨 목표 시뮬레이션은 생략됩니다.")
