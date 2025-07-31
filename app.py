@@ -34,7 +34,7 @@ d_stat_map = {
 }
 stat_order = ["인내력", "충성심", "속도", "체력"]
 # 적극성은 stat_order에 없으므로, 별도로 관리
-all_stats = ["인내력", "충성심", "속도", "체력", "적극성"] 
+all_stats_for_pure_calculation = ["인내력", "충성심", "속도", "체력", "적극성"] 
 
 base_stats_initial = {"인내력": 6, "충성심": 6, "속도": 6, "체력": 6, "적극성": 3} # Default base for non-main stat
 main_stat_initial = 14 # Default base for main stat
@@ -108,7 +108,7 @@ specialty_rewards_by_type_and_stage = {
 }
 
 def calculate_accumulated_facility_stats(facility_name, level):
-    stats_to_sum = {stat: 0 for stat in all_stats}
+    stats_to_sum = {stat: 0 for stat in all_stats_for_pure_calculation}
     if facility_name in facility_rewards_data:
         for i in range(min(level, len(facility_rewards_data[facility_name]))):
             rewards_at_level = facility_rewards_data[facility_name][i]
@@ -118,7 +118,7 @@ def calculate_accumulated_facility_stats(facility_name, level):
     return stats_to_sum
 
 def get_specialty_bonus_for_stage(specialty_type, stage):
-    stats_to_add = {stat: 0 for stat in all_stats}
+    stats_to_add = {stat: 0 for stat in all_stats_for_pure_calculation}
     if specialty_type in specialty_rewards_by_type_and_stage:
         if stage in specialty_rewards_by_type_and_stage[specialty_type]:
             rewards_at_stage = specialty_rewards_by_type_and_stage[specialty_type][stage]
@@ -209,7 +209,7 @@ if st.button("결과 계산"):
 # ---------- 결과 표시 ----------
 if st.session_state["calculated"]:
     # Calculate total facility bonuses
-    total_facility_bonuses = {stat: 0 for stat in all_stats}
+    total_facility_bonuses = {stat: 0 for stat in all_stats_for_pure_calculation}
     
     facility_levels_map = {
         "관리소": management_office_level,
@@ -226,7 +226,7 @@ if st.session_state["calculated"]:
                 total_facility_bonuses[stat] += value
 
     # Calculate total specialty bonuses
-    total_specialty_bonuses = {stat: 0 for stat in all_stats}
+    total_specialty_bonuses = {stat: 0 for stat in all_stats_for_pure_calculation}
     
     specialty_inputs = {
         "노비스 에너지": novice_energy_stage,
@@ -254,7 +254,7 @@ if st.session_state["calculated"]:
 
     # Calculate user's PURE stats (펫 타운 시설 스탯 및 특기 스탯 제외)
     user_pure_stats = {}
-    for stat_name in all_stats:
+    for stat_name in all_stats_for_pure_calculation:
         if stat_name in stat_order: # 인내력, 충성심, 속도, 체력
             # 주 스탯과 나머지 스탯을 구분하여 기본값 설정
             initial_base = main_stat_initial if stat_name == d_stat else base_stats_initial[stat_name]
@@ -364,7 +364,8 @@ if st.session_state["calculated"]:
         target_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 목표값", min_value=0, value=35, step=1)
         target_stats[c_stat_name] = col3.number_input(f"{c_stat_name} 목표값", min_value=0, value=35, step=1)
         target_stats[d_stat] = col4.number_input(f"{d_stat} 목표값 (주 스탯)", min_value=0, value=100, step=1)
-        target_stats["적극성"] = st.number_input(f"적극성 목표값", min_value=0, value=3, step=1)
+        # 적극성 목표값 입력은 유지하되, 확률 계산에서는 제외
+        _ = st.number_input(f"적극성 목표값 (확률 계산에 포함되지 않음)", min_value=0, value=3, step=1)
 
 
         remaining_upgrades = 20 - level
@@ -384,22 +385,16 @@ if st.session_state["calculated"]:
             sim_final_at_20 = {}
             for stat_name in stat_order:
                 sim_final_at_20[stat_name] = sim_pure_at_20[stat_name] + total_facility_bonuses[stat_name] + total_specialty_bonuses[stat_name]
-            # 적극성은 시뮬레이션으로 증가하지 않으므로, 순수 기본값 + 시설/특기 보너스
-            sim_final_at_20["적극성"] = base_stats_initial["적극성"] + total_facility_bonuses["적극성"] + total_specialty_bonuses["적극성"]
-
+            
             # 확률 계산
             probabilities = {}
-            for stat_name in all_stats:
+            for stat_name in stat_order: # 적극성 제외
                 probabilities[stat_name] = np.mean(sim_final_at_20[stat_name] >= target_stats[stat_name]) * 100
             
-            # 모든 목표 동시 만족 확률
+            # 모든 목표 동시 만족 확률 (적극성 제외)
             all_conditions = np.full(num_sim, True)
-            for stat_name in all_stats:
-                # 적극성은 넘파이 배열이 아닌 단일 값일 수 있으므로 별도 처리
-                if isinstance(sim_final_at_20[stat_name], np.ndarray):
-                    all_conditions = all_conditions & (sim_final_at_20[stat_name] >= target_stats[stat_name])
-                else: # 적극성처럼 단일 값인 경우
-                    all_conditions = all_conditions & (sim_final_at_20[stat_name] >= target_stats[stat_name])
+            for stat_name in stat_order: # 적극성 제외
+                all_conditions = all_conditions & (sim_final_at_20[stat_name] >= target_stats[stat_name])
             
             p_all = np.mean(all_conditions) * 100
 
@@ -408,7 +403,6 @@ if st.session_state["calculated"]:
             st.write(f"\U0001F539 {b_stat_name} 목표 도달 확률: **{probabilities[b_stat_name]:.2f}%**")
             st.write(f"\U0001F539 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
             st.write(f"\U0001F539 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
-            st.write(f"\U0001F539 적극성 목표 도달 확률: **{probabilities['적극성']:.2f}%**")
             st.success(f"\U0001F3C6 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
         else:
             st.warning("펫 레벨이 이미 20을 초과했습니다. 20레벨 목표 시뮬레이션은 생략됩니다.")
