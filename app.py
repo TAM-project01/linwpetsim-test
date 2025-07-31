@@ -134,7 +134,7 @@ b_input = col2.number_input(f"{b_stat} 수치", min_value=0, value=base_stats_in
 c_input = col1.number_input(f"{c_stat} 수치", min_value=0, value=base_stats_initial[c_stat], step=1)
 d_input = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1)
 
-st.subheader("시설물 레벨 (슬라이더로 조절)")
+st.subheader("시설물 레벨")
 # Slider for facility levels
 management_office_level = st.slider("관리소 레벨", min_value=0, max_value=20, value=0, step=1)
 dormitory_level = st.slider("숙소 레벨", min_value=0, max_value=20, value=0, step=1)
@@ -142,7 +142,7 @@ training_ground_level = st.slider("훈련장 레벨", min_value=0, max_value=20,
 playground_level = st.slider("놀이터 레벨", min_value=0, max_value=20, value=0, step=1)
 fence_level = st.slider("울타리 레벨", min_value=0, max_value=20, value=0, step=1)
 
-st.subheader("특기 단계 (슬라이더로 조절)")
+st.subheader("특기 단계")
 st.markdown("특정 단계까지만 활성화됩니다. (예: 노비스는 3단계까지, 비기너는 4단계까지, 레이즈는 5단계까지)")
 
 # Specialty sliders
