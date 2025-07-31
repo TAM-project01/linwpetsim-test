@@ -25,13 +25,6 @@ if "result_json" not in st.session_state:
 if "loaded_json_str" not in st.session_state:
     st.session_state["loaded_json_str"] = ""
 
-# 저장된 기록 불러오기 (localStorage는 JS에서)
-# JS 코드가 로컬스토리지 읽어서 버튼 생성, 버튼 누르면 텍스트박스에 JSON 복사
-
-# 이름 입력
-name = st.text_input("이름 입력", value="무명")
-
-category_list = ["도베르만", "비글", "셰퍼드", "늑대"]
 d_stat_map = {
     "도베르만": "충성심",
     "비글": "속도",
@@ -39,25 +32,32 @@ d_stat_map = {
     "늑대": "체력"
 }
 stat_order = ["인내력", "충성심", "속도", "체력"]
+category_list = list(d_stat_map.keys())
 
-# 불러오기용 텍스트 박스 (사용자 직접 복사 붙여넣기 가능)
-loaded_json_str = st.text_area("불러온 기록 JSON (버튼 클릭 후 불러오기 클릭)", height=120, value=st.session_state["loaded_json_str"])
+# 이름 입력
+name = st.text_input("이름 입력", value="무명")
 
-# 불러오기 버튼 (사용자가 클릭해야 Python에 반영)
+# 불러오기용 텍스트 박스
+loaded_json_str = st.text_area("불러온 기록 JSON (버튼 클릭 후 불러오기 클릭)", height=140, value=st.session_state["loaded_json_str"], key="loaded_json")
+
 if st.button("불러오기"):
     try:
         loaded_data = json.loads(loaded_json_str)
-        st.session_state["loaded_json_str"] = loaded_json_str  # 상태 저장
-        # 자동으로 UI 세팅을 위해 변수 저장
-        st.session_state["load_category"] = loaded_data.get("category", category_list[0])
-        st.session_state["load_name"] = loaded_data.get("name", "무명")
-        st.session_state["load_level"] = loaded_data.get("level", 2)
-        st.session_state["load_detail"] = loaded_data.get("detail", {})
-        st.success("기록을 불러왔습니다.")
+        # 데이터 검증 - 필수 키 존재 여부 간단 확인
+        required_keys = ["category", "name", "level", "detail"]
+        if not all(k in loaded_data for k in required_keys):
+            st.error(f"불러온 JSON에 필수 키가 없습니다: {required_keys}")
+        else:
+            st.session_state["loaded_json_str"] = loaded_json_str
+            st.session_state["load_category"] = loaded_data.get("category", category_list[0])
+            st.session_state["load_name"] = loaded_data.get("name", "무명")
+            st.session_state["load_level"] = loaded_data.get("level", 2)
+            st.session_state["load_detail"] = loaded_data.get("detail", {})
+            st.success("기록을 성공적으로 불러왔습니다.")
     except Exception as e:
-        st.error(f"불러오기 실패: {e}")
+        st.error(f"불러오기 실패: 올바른 JSON 형식인지 확인하세요.\n오류: {e}")
 
-# 불러온 데이터가 있으면 그걸 우선으로 UI 세팅, 없으면 기본값
+# 불러온 데이터가 있으면 우선으로 UI 세팅
 category = st.session_state.get("load_category", category_list[0])
 name = st.session_state.get("load_name", name)
 level = st.session_state.get("load_level", 2)
@@ -72,13 +72,11 @@ exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
 
 col1, col2 = st.columns(2)
 
-# 불러온 값이 없으면 기본값
 a = detail.get(a_stat, 6)
 b = detail.get(b_stat, 6)
 c = detail.get(c_stat, 6)
 d = detail.get(d_stat, 14)
 
-# 숫자 입력
 level = col1.number_input("레벨 (2 이상)", min_value=2, value=level, step=1)
 a = col1.number_input(f"{a_stat} 수치", min_value=0, value=a, step=1)
 b = col2.number_input(f"{b_stat} 수치", min_value=0, value=b, step=1)
@@ -236,12 +234,11 @@ function loadHistoryItem(idx) {{
     let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
     if (history.length > idx) {{
         let item = history[idx];
-        // 아래 textarea id="loaded_json"에 JSON 문자열 복사
         const textarea = window.parent.document.querySelector('textarea[id="loaded_json"]');
         if (textarea) {{
             textarea.value = JSON.stringify(item, null, 2);
             textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
-            alert('불러온 기록 JSON이 텍스트 박스에 복사되었습니다. \n상단 "불러오기" 버튼을 눌러 적용하세요.');
+            alert('불러온 기록 JSON이 텍스트 박스에 복사되었습니다. 상단 "불러오기" 버튼을 눌러 적용하세요.');
         }} else {{
             alert('불러오기용 텍스트 박스를 찾을 수 없습니다.');
         }}
