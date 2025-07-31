@@ -127,7 +127,7 @@ a_stat, b_stat, c_stat = remaining_stats # Other stats
 
 exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
 
-st.subheader("펫 현재 정보 (펫 타운 스탯 및 특기 스탯 포함하여 입력)")
+st.subheader("펫 현재 정보 (펫 타운 및 특기가 포함된 스탯 입력)")
 col1, col2 = st.columns(2)
 level = col1.number_input("펫 레벨 (1 이상)", min_value=1, value=1, step=1)
 # 사용자가 입력하는 스탯은 시설물 스탯을 포함한 값
