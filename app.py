@@ -30,8 +30,6 @@ d_stat_map = {
 stat_order = ["인내력", "충성심", "속도", "체력"]
 
 # ---------- 시설별 펫 스탯 보너스 테이블 (0~20 단계 누적용) ----------
-# 단계별 누적 합산을 위해 리스트 안 값들은 단계별 추가 보너스
-
 facility_bonus_pet_stats = {
     "관리소": [
         {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":5},
@@ -79,12 +77,7 @@ facility_bonus_pet_stats = {
     ],
 }
 
-# 펫 스탯 4종만 관리 (인내력, 충성심, 속도, 체력)
-# 적극성, 펫 경험치 보너스 등은 따로 표시 가능하니 우선 시뮬레이션에서는 제외
-
 def calc_cumulative_bonus(facility, level):
-    """facility: str, level: int (0~20)
-    해당 시설의 1~level단계까지 누적된 펫 스탯 보너스를 반환 (dict)"""
     bonus = {"인내력":0, "충성심":0, "속도":0, "체력":0}
     if level == 0:
         return bonus
@@ -137,7 +130,6 @@ pure_b = b - total_bonus.get(b_stat, 0)
 pure_c = c - total_bonus.get(c_stat, 0)
 pure_d = d - total_bonus.get(d_stat, 0)
 
-# 음수 방지
 pure_a = max(pure_a, 0)
 pure_b = max(pure_b, 0)
 pure_c = max(pure_c, 0)
@@ -158,18 +150,16 @@ if st.button("결과 계산"):
 if st.session_state["calculated"]:
     upgrades = level - 1
 
-    # 시뮬레이션은 순수 스탯 기준으로 수행
     a_sim = pure_a + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
     b_sim = pure_b + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
     c_sim = pure_c + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
     d_sim = pure_d + np.random.choice(d_vals, (num_sim, upgrades), p=d_probs).sum(axis=1)
 
-    # 사용자가 입력한 순수 펫 스탯 총합과 시뮬레이션 비교
     user_total_pure = pure_a + pure_b + pure_c + pure_d
     total_sim = a_sim + b_sim + c_sim + d_sim
 
+    # 개선: > 연산자만 사용
     total_percentile = np.sum(total_sim > user_total_pure) / num_sim * 100
-
     a_percentile = np.sum(a_sim > pure_a) / num_sim * 100
     b_percentile = np.sum(b_sim > pure_b) / num_sim * 100
     c_percentile = np.sum(c_sim > pure_c) / num_sim * 100
@@ -180,13 +170,15 @@ if st.session_state["calculated"]:
     inc_c = (pure_c - 6) / upgrades
     inc_d = (pure_d - 14) / upgrades
 
+    st.write(f"User pure total stat: {user_total_pure}")
+    st.write(f"Simulated total stat min: {total_sim.min()}, max: {total_sim.max()}, mean: {total_sim.mean():.2f}")
+
     st.success(f"\U0001F4CC 시설 제외 펫 순수 스탯 총합: {user_total_pure}")
     st.info(f"\U0001F4A1 {'체력 제외 시 ' if exclude_hp else ''}상위 약 {total_percentile:.2f}% 에 해당합니다.")
     st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 레벨: **{level}**")
     st.markdown(f"### \U0001F3D7 시설 단계")
     st.write(f"관리소: {level_gm}, 숙소: {level_inn}, 훈련장: {level_training}, 놀이터: {level_playground}, 울타리: {level_fence}")
 
-    # 결과표에 시설 제외 순수 펫 스탯 보여주기
     df = pd.DataFrame({
         "스탯": [a_stat, b_stat, c_stat, d_stat],
         "현재 수치": [a, b, c, d],
@@ -202,7 +194,6 @@ if st.session_state["calculated"]:
     })
     st.table(df)
 
-    # 시뮬레이션 총합 분포 그래프
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(total_sim, bins=50, kde=True, ax=ax, color='skyblue')
     ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pure Total Stat')
@@ -211,7 +202,6 @@ if st.session_state["calculated"]:
     ax.legend()
     st.pyplot(fig)
 
-    # ---------- 목표 스탯 입력 ----------
     calc_goal = st.checkbox("\U0001F3AF 20레벨 목표 스탯 도달 확률 보기")
 
     if calc_goal:
