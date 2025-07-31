@@ -252,7 +252,6 @@ if st.session_state["calculated"]:
         b_stat: max(base_stats_initial[b_stat], b_input - total_facility_bonuses[b_stat] - total_specialty_bonuses[b_stat]),
         c_stat: max(base_stats_initial[c_stat], c_input - total_facility_bonuses[c_stat] - total_specialty_bonuses[c_stat]),
         d_stat: max(main_stat_initial, d_input - total_facility_bonuses[d_stat] - total_specialty_bonuses[d_stat]),
-        # 적극성의 순수 스탯은 입력값에서 시설물/특기 보너스를 뺀 값입니다.
         "적극성": max(base_stats_initial["적극성"], activeness_input - total_facility_bonuses["적극성"] - total_specialty_bonuses["적극성"])
     }
     
@@ -311,35 +310,35 @@ if st.session_state["calculated"]:
     st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 펫 레벨: **{level}**")
 
     # Display individual stats including facility bonuses
+    # Re-order the input_values, pure_stats_values, facility_bonuses_values, specialty_bonuses_values
+    # to match the stat_order + ["적극성"]
+    input_values = [a_input, b_input, c_input, d_input]
+    pure_stats_values = [user_pure_stats[s] for s in [a_stat, b_stat, c_stat, d_stat]]
+    facility_bonuses_values = [total_facility_bonuses[s] for s in [a_stat, b_stat, c_stat, d_stat]]
+    specialty_bonuses_values = [total_specialty_bonuses[s] for s in [a_stat, b_stat, c_stat, d_stat]]
+    percentile_values = [f"{a_percentile:.2f}%", f"{b_percentile:.2f}%", f"{c_percentile:.2f}%", f"{d_percentile:.2f}%"]
+    avg_increase_values = [f"+{inc_a:.2f}", f"+{inc_b:.2f}", f"+{inc_c:.2f}", f"+{inc_d:.2f}"]
+
+    # Append Activeness values separately
+    input_values.append(activeness_input) # User's activeness input
+    pure_stats_values.append(user_pure_stats["적극성"])
+    facility_bonuses_values.append(total_facility_bonuses["적극성"])
+    specialty_bonuses_values.append(total_specialty_bonuses["적극성"])
+    percentile_values.append("N/A") # Activeness does not have a percentile
+    avg_increase_values.append("N/A") # Activeness does not increase by level-up
+
     df_data = {
         "스탯": stat_order + ["적극성"],
-        "입력 수치 (펫 타운/특기 포함)": [a_input, b_input, c_input, d_input, activeness_input], 
-        "순수 펫 스탯 (펫 타운/특기 제외)": [
-            user_pure_stats[a_stat],
-            user_pure_stats[b_stat],
-            user_pure_stats[c_stat],
-            user_pure_stats[d_stat],
-            user_pure_stats["적극성"]
-        ],
-        "펫 타운으로 인한 증가량": [
-            total_facility_bonuses[a_stat],
-            total_facility_bonuses[b_stat],
-            total_facility_bonuses[c_stat],
-            total_facility_bonuses[d_stat],
-            total_facility_bonuses["적극성"]
-        ],
-        "특기로 인한 증가량": [
-            total_specialty_bonuses[a_stat],
-            total_specialty_bonuses[b_stat],
-            total_specialty_bonuses[c_stat],
-            total_specialty_bonuses[d_stat],
-            total_specialty_bonuses["적극성"]
-        ],
-        "상위 % (순수 스탯 기준)": [f"{a_percentile:.2f}%", f"{b_percentile:.2f}%", f"{c_percentile:.2f}%", f"{d_percentile:.2f}%", "N/A"],
-        "펫 레벨당 평균 증가량 (시설물/특기 제외)": [f"+{inc_a:.2f}", f"+{inc_b:.2f}", f"+{inc_c:.2f}", f"+{inc_d:.2f}", "N/A"]
+        "입력 수치 (펫 타운/특기 포함)": input_values,
+        "순수 펫 스탯 (펫 타운/특기 제외)": pure_stats_values,
+        "펫 타운으로 인한 증가량": facility_bonuses_values,
+        "특기로 인한 증가량": specialty_bonuses_values,
+        "상위 % (순수 스탯 기준)": percentile_values,
+        "펫 레벨당 평균 증가량 (시설물/특기 제외)": avg_increase_values
     }
     df = pd.DataFrame(df_data)
     st.table(df)
+
 
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
@@ -361,6 +360,8 @@ if st.session_state["calculated"]:
         target_b = col2.number_input(f"{b_stat} 목표값", min_value=0, value=35, step=1)
         target_c = col3.number_input(f"{c_stat} 목표값", min_value=0, value=35, step=1)
         target_d = col4.number_input(f"{d_stat} 목표값 (주 스탯)", min_value=0, value=100, step=1)
+        target_active = st.number_input(f"적극성 목표값", min_value=0, value=3, step=1)
+
 
         remaining_upgrades = 20 - level
         if remaining_upgrades >= 0: # Can reach 20 or already at 20+
@@ -382,21 +383,27 @@ if st.session_state["calculated"]:
             sim_b_at_20_final = sim_b_at_20_pure + total_facility_bonuses[b_stat] + total_specialty_bonuses[b_stat]
             sim_c_at_20_final = sim_c_at_20_pure + total_facility_bonuses[c_stat] + total_specialty_bonuses[c_stat]
             sim_d_at_20_final = sim_d_at_20_pure + total_facility_bonuses[d_stat] + total_specialty_bonuses[d_stat]
+            # 적극성은 시뮬레이션으로 증가하지 않으므로, 순수 기본값 + 시설/특기 보너스
+            sim_active_at_20_final = base_stats_initial["적극성"] + total_facility_bonuses["적극성"] + total_specialty_bonuses["적극성"]
+
 
             p_a = np.mean(sim_a_at_20_final >= target_a) * 100
             p_b = np.mean(sim_b_at_20_final >= target_b) * 100
             p_c = np.mean(sim_c_at_20_final >= target_c) * 100
             p_d = np.mean(sim_d_at_20_final >= target_d) * 100
+            p_active = np.mean(sim_active_at_20_final >= target_active) * 100
 
             p_all = np.mean((sim_a_at_20_final >= target_a) & 
                             (sim_b_at_20_final >= target_b) & 
                             (sim_c_at_20_final >= target_c) & 
-                            (sim_d_at_20_final >= target_d)) * 100
+                            (sim_d_at_20_final >= target_d) &
+                            (sim_active_at_20_final >= target_active)) * 100
 
             st.write(f"\U0001F539 {a_stat} 목표 도달 확률: **{p_a:.2f}%**")
             st.write(f"\U0001F539 {b_stat} 목표 도달 확률: **{p_b:.2f}%**")
             st.write(f"\U0001F539 {c_stat} 목표 도달 확률: **{p_c:.2f}%**")
             st.write(f"\U0001F539 {d_stat} (주 스탯) 목표 도달 확률: **{p_d:.2f}%**")
+            st.write(f"\U0001F539 적극성 목표 도달 확률: **{p_active:.2f}%**")
             st.success(f"\U0001F3C6 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
         else:
             st.warning("펫 레벨이 이미 20을 초과했습니다. 20레벨 목표 시뮬레이션은 생략됩니다.")
