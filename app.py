@@ -195,7 +195,8 @@ function showHistory() {{
     let html = '';
     for(let i=0; i<history.length; i++) {{
         let r = history[i];
-        html += `<button onclick="loadHistoryItem(${i})" style="margin:2px;">${{r.name || '무명'}} (${{r.time}}) 총합: ${{r.total}}</button><br/>`;
+        html += '<button onclick="loadHistoryItem(' + i + ')" style="margin:2px;">' +
+                (r.name || '무명') + ' (' + r.time + ') 총합: ' + r.total + '</button><br/>';
     }}
     document.getElementById('history_buttons').innerHTML = html;
 }}
