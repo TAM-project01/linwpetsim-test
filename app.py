@@ -140,7 +140,14 @@ a_input = col1.number_input(f"{a_stat} 수치", min_value=0, value=base_stats_in
 b_input = col2.number_input(f"{b_stat} 수치", min_value=0, value=base_stats_initial[b_stat], step=1)
 c_input = col1.number_input(f"{c_stat} 수치", min_value=0, value=base_stats_initial[c_stat], step=1)
 d_input = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1)
-st.markdown(f"**적극성: {base_stats_initial['적극성']}** (레벨 무관 고정값)")
+
+# 적극성 스탯 입력 필드 추가
+activeness_input = st.number_input(
+    f"적극성 수치 (고정값 + 펫 타운 + 특기 포함)",
+    min_value=0,
+    value=base_stats_initial["적극성"],
+    step=1
+)
 
 
 st.subheader("펫 타운 시설 레벨")
@@ -245,7 +252,8 @@ if st.session_state["calculated"]:
         b_stat: max(base_stats_initial[b_stat], b_input - total_facility_bonuses[b_stat] - total_specialty_bonuses[b_stat]),
         c_stat: max(base_stats_initial[c_stat], c_input - total_facility_bonuses[c_stat] - total_specialty_bonuses[c_stat]),
         d_stat: max(main_stat_initial, d_input - total_facility_bonuses[d_stat] - total_specialty_bonuses[d_stat]),
-        "적극성": base_stats_initial["적극성"] + total_facility_bonuses["적극성"] + total_specialty_bonuses["적극성"]
+        # 적극성의 순수 스탯은 입력값에서 시설물/특기 보너스를 뺀 값입니다.
+        "적극성": max(base_stats_initial["적극성"], activeness_input - total_facility_bonuses["적극성"] - total_specialty_bonuses["적극성"])
     }
     
     user_total_pure = 0
@@ -305,7 +313,7 @@ if st.session_state["calculated"]:
     # Display individual stats including facility bonuses
     df_data = {
         "스탯": stat_order + ["적극성"],
-        "입력 수치 (펫 타운/특기 포함)": [a_input, b_input, c_input, d_input, "N/A"], # 적극성은 입력받지 않음
+        "입력 수치 (펫 타운/특기 포함)": [a_input, b_input, c_input, d_input, activeness_input], 
         "순수 펫 스탯 (펫 타운/특기 제외)": [
             user_pure_stats[a_stat],
             user_pure_stats[b_stat],
