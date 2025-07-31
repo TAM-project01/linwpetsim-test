@@ -234,7 +234,7 @@ function loadHistoryItem(idx) {{
     let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
     if (history.length > idx) {{
         let item = history[idx];
-        const textarea = window.parent.document.querySelector('textarea[id="loaded_json"]');
+        const textarea = window.parent.document.querySelector('textarea');
         if (textarea) {{
             textarea.value = JSON.stringify(item, null, 2);
             textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
@@ -254,4 +254,3 @@ window.onload = function() {{
 <div id="history_buttons" style="margin-top:10px; font-weight:bold;"></div>
 """
 
-components.html(js_code, height=450)
