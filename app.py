@@ -221,7 +221,7 @@ if st.session_state["calculated"]:
         for stat, value in bonuses.items():
             total_specialty_bonuses[stat] += value
 
-    # Calculate user's PURE stats (시설물 스탯 및 특기 스탯 제외)
+    # Calculate user's PURE stats (펫 타운 시설 스탯 및 특기 스탯 제외)
     # Ensure pure stats don't go below initial base stats
     user_pure_stats = {
         a_stat: max(base_stats_initial[a_stat], a_input - total_facility_bonuses[a_stat] - total_specialty_bonuses[a_stat]),
@@ -314,9 +314,9 @@ if st.session_state["calculated"]:
 
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
-    ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pure Total')
-    ax.set_title(f"{'체력 제외 ' if exclude_hp else ''}총 스탯 분포 (시설물 및 특기 제외 순수 스탯)")
-    ax.set_xlabel("총 스탯")
+    ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pet pure Total Stats')
+    ax.set_title(f"{'Exclude HP ' if exclude_hp else ''}Total Stats Distribution (Pet Pure Stats)")
+    ax.set_xlabel("Total Stats")
     ax.legend()
     st.pyplot(fig)
 
