@@ -3,10 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import json
 from datetime import datetime
 
-# ---------- 초기 설정 ----------
 plt.rcParams['font.family'] = 'DejaVu Sans'
 plt.rcParams['axes.unicode_minus'] = False
 
@@ -18,15 +16,13 @@ st.markdown("""
 **특기로 얻은 스탯은 제외하고 입력**해 주세요.
 """)
 
-# ---------- 상태 저장 초기화 ----------
 if "calculated" not in st.session_state:
     st.session_state["calculated"] = False
 if "history" not in st.session_state:
-    st.session_state["history"] = []  # 기록 리스트
+    st.session_state["history"] = []
 if "current_result" not in st.session_state:
     st.session_state["current_result"] = None
 
-# ---------- 종 정보 ----------
 d_stat_map = {
     "도베르만": "충성심",
     "비글": "속도",
@@ -35,14 +31,13 @@ d_stat_map = {
 }
 stat_order = ["인내력", "충성심", "속도", "체력"]
 
-# ---------- 기록 불러오기용 선택박스 ----------
+# 기록 불러오기
 st.sidebar.header("저장된 기록 불러오기")
 if st.session_state["history"]:
     selected_idx = st.sidebar.selectbox("불러올 기록 선택", options=list(range(len(st.session_state["history"]))),
                                         format_func=lambda x: f"{st.session_state['history'][x]['time']} - {st.session_state['history'][x]['category']} - 총합 {st.session_state['history'][x]['total']}")
     if st.sidebar.button("불러오기"):
         record = st.session_state["history"][selected_idx]
-        # 입력값 세션 상태에 저장 (불러오기)
         st.session_state["category"] = record["category"]
         st.session_state["level"] = record["level"]
         st.session_state["a"] = record["detail"][record["a_stat"]]
@@ -54,7 +49,6 @@ if st.session_state["history"]:
 else:
     st.sidebar.write("저장된 기록이 없습니다.")
 
-# ---------- 입력 폼 초기값 설정 ----------
 category = st.session_state.get("category", list(d_stat_map.keys())[0])
 d_stat = d_stat_map[category]
 remaining_stats = [s for s in stat_order if s != d_stat]
@@ -78,14 +72,12 @@ with col2:
     b = st.number_input(f"{b_stat} 수치", min_value=0, value=b, step=1)
     d = st.number_input(f"{d_stat} 수치", min_value=0, value=d, step=1)
 
-# ---------- 시뮬레이션용 상수 ----------
 num_sim = 100_000
 ac_vals = [0, 1, 2, 3]
 ac_probs = [0.15, 0.5, 0.3, 0.05]
 d_vals = [1, 2, 3, 4, 5, 6, 7]
 d_probs = [0.05, 0.15, 0.3, 0.2, 0.15, 0.1, 0.05]
 
-# ---------- 계산 및 저장 ----------
 if st.button("결과 계산"):
     upgrades = level - 1
     a_sim = 6 + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
@@ -132,7 +124,6 @@ if st.button("결과 계산"):
     ax.legend()
     st.pyplot(fig)
 
-    # 목표 스탯 도달 확률 보기
     calc_goal = st.checkbox("\U0001F3AF 20레벨 목표 스탯 도달 확률 보기")
 
     if calc_goal:
@@ -164,7 +155,7 @@ if st.button("결과 계산"):
         else:
             st.warning("이미 20레벨입니다. 목표 시뮬레이션은 생략됩니다.")
 
-    # ---------- 현재 결과 저장 ----------
+    # 현재 결과 저장
     st.session_state["current_result"] = {
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "category": category,
@@ -182,24 +173,29 @@ if st.button("결과 계산"):
         "d_stat": d_stat
     }
 
-    # 기록 저장 버튼
+    st.write("디버그 - 현재 기록 수:", len(st.session_state["history"]))
+
     if st.button("현재 결과 저장하기"):
-        # 중복 검사
-        history = st.session_state["history"]
         current = st.session_state["current_result"]
-        if any(
-            (h["category"] == current["category"] and
-             h["level"] == current["level"] and
-             h["total"] == current["total"] and
-             h["detail"] == current["detail"])
-            for h in history
-        ):
+        history = st.session_state["history"]
+
+        # 중복 검사
+        duplicate = False
+        for h in history:
+            if (h["category"] == current["category"] and
+                h["level"] == current["level"] and
+                h["total"] == current["total"] and
+                h["detail"] == current["detail"]):
+                duplicate = True
+                break
+
+        if duplicate:
             st.warning("이미 같은 기록이 저장되어 있습니다.")
         else:
-            history.insert(0, current)  # 최신 기록을 맨 앞에 저장
-            if len(history) > 20:  # 기록 최대 20개 제한
+            history.insert(0, current)
+            if len(history) > 20:
                 history.pop()
             st.success("기록이 저장되었습니다.")
-        st.experimental_rerun()
+            st.experimental_rerun()
 else:
     st.info("먼저 '결과 계산' 버튼을 눌러 주세요.")
