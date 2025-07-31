@@ -422,8 +422,8 @@ if st.session_state["calculated"]:
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
     ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pet Pure Total Stats')
-    ax.set_title(f"{'체력 제외 ' if exclude_hp else ''}총 스탯 분포 (순수 펫 스탯)")
-    ax.set_xlabel("총 스탯")
+    ax.set_title(f"Overall Stat Distribution (Pure Pet Stats){' (Excluding HP)' if exclude_hp else ''}") 
+    ax.set_xlabel("Total Stats") 
     ax.legend()
     st.pyplot(fig)
 
