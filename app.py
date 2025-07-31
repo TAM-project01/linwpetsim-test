@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+from scipy import stats # scipy 라이브러리 임포트
 
 # ---------- 초기 설정 ----------
 plt.rcParams['font.family'] = 'DejaVu Sans' # 한글 폰트 설정 (Mac/Linux용)
@@ -139,43 +140,55 @@ if st.button("결과 계산"):
 
 if st.session_state["calculated"]:
     upgrades = level - 1
+    # 레벨 1에서 시작하므로, 레벨 2는 1회 성장으로 계산
+    # upgrades_effective는 시뮬레이션에 사용될 실제 성장 횟수
+    upgrades_effective = max(0, upgrades) # 레벨 2 미만일 경우 0회 성장
 
     # 시뮬레이션은 순수 스탯 기준으로 수행
-    # 레벨이 2 미만일 경우 upgrades가 음수가 되므로, 0보다 작으면 0으로 처리
-    upgrades_effective = max(0, upgrades)
-
-    a_sim = pure_a + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
-    b_sim = pure_b + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
-    c_sim = pure_c + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
-    d_sim = pure_d + np.random.choice(d_vals, (num_sim, upgrades_effective), p=d_probs).sum(axis=1)
+    # upgrades_effective가 0일 경우, np.random.choice의 두 번째 인자가 (num_sim, 0)이 되어 문제가 될 수 있음
+    # 이 경우, 각 pure_stat 값을 그대로 사용하도록 처리
+    if upgrades_effective == 0:
+        a_sim = np.full(num_sim, pure_a)
+        b_sim = np.full(num_sim, pure_b)
+        c_sim = np.full(num_sim, pure_c)
+        d_sim = np.full(num_sim, pure_d)
+    else:
+        a_sim = pure_a + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
+        b_sim = pure_b + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
+        c_sim = pure_c + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
+        d_sim = pure_d + np.random.choice(d_vals, (num_sim, upgrades_effective), p=d_probs).sum(axis=1)
 
     user_total_pure = pure_a + pure_b + pure_c + pure_d
     total_sim = a_sim + b_sim + c_sim + d_sim
 
-    # 백분위 계산 로직 수정: '상위 %'는 (100 - 내 스탯보다 작거나 같은 비율)로 계산
-    total_percentile_rank = np.sum(total_sim <= user_total_pure) / num_sim * 100
+    # 백분위 계산 로직 수정: scipy.stats.percentileofscore 사용
+    # kind='weak'는 'your_value보다 작거나 같은 값의 비율'을 반환
+    # '상위 %'는 (100 - percentile_rank)로 계산
+    total_percentile_rank = stats.percentileofscore(total_sim, user_total_pure, kind='weak')
     total_top_percent = 100 - total_percentile_rank
 
-    a_percentile_rank = np.sum(a_sim <= pure_a) / num_sim * 100
+    a_percentile_rank = stats.percentileofscore(a_sim, pure_a, kind='weak')
     a_top_percent = 100 - a_percentile_rank
 
-    b_percentile_rank = np.sum(b_sim <= pure_b) / num_sim * 100
+    b_percentile_rank = stats.percentileofscore(b_sim, pure_b, kind='weak')
     b_top_percent = 100 - b_percentile_rank
 
-    c_percentile_rank = np.sum(c_sim <= pure_c) / num_sim * 100
+    c_percentile_rank = stats.percentileofscore(c_sim, pure_c, kind='weak')
     c_top_percent = 100 - c_percentile_rank
 
-    d_percentile_rank = np.sum(d_sim <= pure_d) / num_sim * 100
+    d_percentile_rank = stats.percentileofscore(d_sim, pure_d, kind='weak')
     d_top_percent = 100 - d_percentile_rank
 
-    inc_a = (pure_a - 6) / upgrades if upgrades > 0 else 0
-    inc_b = (pure_b - 6) / upgrades if upgrades > 0 else 0
-    inc_c = (pure_c - 6) / upgrades if upgrades > 0 else 0
-    inc_d = (pure_d - 14) / upgrades if upgrades > 0 else 0
+    # Lv당 평균 증가량은 upgrades_effective가 0인 경우 0으로 처리
+    inc_a = (pure_a - 6) / upgrades_effective if upgrades_effective > 0 else 0
+    inc_b = (pure_b - 6) / upgrades_effective if upgrades_effective > 0 else 0
+    inc_c = (pure_c - 6) / upgrades_effective if upgrades_effective > 0 else 0
+    inc_d = (pure_d - 14) / upgrades_effective if upgrades_effective > 0 else 0
 
 
     st.success(f"\U0001F4CC 펫의 **순수 스탯 총합**: **{user_total_pure}** (시설 보너스 제외)")
-    st.info(f"\U0001F4A1 현재 펫 스탯은 상위 약 **{total_top_percent:.2f}%** 에 해당합니다. {'(체력 제외)' if exclude_hp else ''}")
+    # '상위 약' 문구를 더 자연스럽게 수정
+    st.info(f"\U0001F4A1 현재 펫 스탯은 상위 **{total_top_percent:.2f}%** 에 해당합니다. {'(체력 제외)' if exclude_hp else ''}")
     st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 레벨: **{level}**")
     st.markdown(f"### \U0001F3D7 시설 단계")
     st.write(f"관리소: {level_gm}, 숙소: {level_inn}, 훈련장: {level_training}, 놀이터: {level_playground}, 울타리: {level_fence}")
@@ -215,10 +228,17 @@ if st.session_state["calculated"]:
 
         remaining = 20 - level
         if remaining > 0:
-            a_20 = pure_a + np.random.choice(ac_vals, (num_sim, remaining), p=ac_probs).sum(axis=1)
-            b_20 = pure_b + np.random.choice(ac_vals, (num_sim, remaining), p=ac_probs).sum(axis=1)
-            c_20 = pure_c + np.random.choice(ac_vals, (num_sim, remaining), p=ac_probs).sum(axis=1)
-            d_20 = pure_d + np.random.choice(d_vals, (num_sim, remaining), p=d_probs).sum(axis=1)
+            # remaining이 0인 경우 np.random.choice 문제 방지
+            if remaining == 0: # 이미 20레벨인 경우
+                a_20 = np.full(num_sim, pure_a)
+                b_20 = np.full(num_sim, pure_b)
+                c_20 = np.full(num_sim, pure_c)
+                d_20 = np.full(num_sim, pure_d)
+            else:
+                a_20 = pure_a + np.random.choice(ac_vals, (num_sim, remaining), p=ac_probs).sum(axis=1)
+                b_20 = pure_b + np.random.choice(ac_vals, (num_sim, remaining), p=ac_probs).sum(axis=1)
+                c_20 = pure_c + np.random.choice(ac_vals, (num_sim, remaining), p=ac_probs).sum(axis=1)
+                d_20 = pure_d + np.random.choice(d_vals, (num_sim, remaining), p=d_probs).sum(axis=1)
 
             p_a = np.mean(a_20 >= target_a) * 100
             p_b = np.mean(b_20 >= target_b) * 100
