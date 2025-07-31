@@ -1,117 +1,65 @@
 import streamlit as st
 import json
+import os
 from datetime import datetime
 
-st.set_page_config(page_title="펫 시뮬레이터", layout="wide")
+SAVE_DIR = "saved_results"
+os.makedirs(SAVE_DIR, exist_ok=True)
 
-st.title("🐾 펫 스탯 시뮬레이터")
-st.markdown("개별 시뮬 결과를 저장하고 나중에 불러올 수 있습니다.")
-
-# ---------- 시뮬레이션 입력 ----------
-name = st.text_input("견종 이름", value="무명")
-level = st.number_input("레벨", min_value=1, max_value=20, value=1)
-main_stat = st.number_input("주 스탯", min_value=0, value=20)
-sub_stats = {
-    "힘": st.number_input("부스탯 - 힘", min_value=0, value=7),
-    "지능": st.number_input("부스탯 - 지능", min_value=0, value=7),
-    "체력": st.number_input("부스탯 - 체력", min_value=0, value=7),
-}
-
-if st.button("🎲 시뮬레이션 실행"):
-    total = main_stat + sum(sub_stats.values())
-    result = {
-        "name": name,
+# ---------- 시뮬레이션 함수 예시 ----------
+def run_simulation(stat_name, level):
+    import random
+    total = random.randint(100, 200)
+    return {
+        "name": stat_name,
         "level": level,
-        "main_stat": main_stat,
-        "sub_stats": sub_stats,
         "total": total,
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "detail": {
-            "주스탯": main_stat,
-            "부스탯": sub_stats,
-        }
+        "details": {"HP": random.randint(10, 20), "MP": random.randint(10, 20)},
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
-    st.session_state["result_json"] = json.dumps(result, ensure_ascii=False)
-    st.success("✅ 시뮬레이션 결과가 생성되었습니다!")
 
-# ---------- 시뮬 결과 JSON 보여주기 ----------
-if "result_json" in st.session_state:
-    st.text_area("🔍 결과 JSON", st.session_state["result_json"], height=200)
+# ---------- 저장 함수 ----------
+def save_result(data):
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{data['name']}.json"
+    with open(os.path.join(SAVE_DIR, filename), "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-# ---------- 저장/불러오기 기능 ----------
-result_json = st.session_state.get("result_json")
-if result_json is None:
-    result_json = "{}"
+# ---------- 저장된 목록 불러오기 ----------
+def load_saved_files():
+    files = sorted(os.listdir(SAVE_DIR), reverse=True)
+    result = []
+    for f in files:
+        try:
+            with open(os.path.join(SAVE_DIR, f), encoding="utf-8") as file:
+                data = json.load(file)
+                result.append((f, data))
+        except:
+            continue
+    return result
 
-# JS 문자열로 안전하게 escape
-js_result_str = json.dumps(result_json)
+# ---------- 시뮬레이션 실행 ----------
+st.title("🐾 펫 스탯 시뮬레이터")
 
-# JavaScript 코드 삽입
-js_code = f"""
-<script>
-const result = JSON.parse({js_result_str});
+stat_name = st.text_input("시뮬레이션 이름", value="내 스탯")
+level = st.number_input("레벨", min_value=1, max_value=20, value=10)
 
-function saveResult() {{
-    if (!result || Object.keys(result).length === 0) {{
-        alert('저장할 결과가 없습니다.');
-        return;
-    }}
-    let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
+if st.button("🧪 시뮬레이션 실행"):
+    result = run_simulation(stat_name, level)
+    st.session_state["last_result"] = result
+    save_result(result)
+    st.success("시뮬레이션 완료 및 저장됨!")
 
-    let isDuplicate = history.some(h =>
-        h.name === result.name &&
-        h.total === result.total &&
-        JSON.stringify(h.detail) === JSON.stringify(result.detail)
-    );
-    if (isDuplicate) {{
-        alert('이미 같은 기록이 있습니다.');
-        return;
-    }}
+# ---------- 결과 표시 ----------
+if "last_result" in st.session_state:
+    st.subheader("📋 최근 결과")
+    st.json(st.session_state["last_result"])
 
-    history.push(result);
-    history.sort((a,b) => new Date(b.time) - new Date(a.time));
-    localStorage.setItem('petSimHistory', JSON.stringify(history));
-    alert('저장 완료!');
-    showHistory();
-}}
+# ---------- 저장된 결과 목록에서 선택 ----------
+st.subheader("💾 저장된 시뮬레이션 불러오기")
+saved = load_saved_files()
 
-function showHistory() {{
-    let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
-    let container = document.getElementById('history_buttons');
-    if (!container) return;
-
-    if (history.length === 0) {{
-        container.innerHTML = '저장된 기록이 없습니다.';
-        return;
-    }}
-
-    let html = '';
-    for (let i = 0; i < history.length; i++) {{
-        let r = history[i];
-        html += `<button onclick="loadHistoryItem(${i})" style="margin:2px;">${{r.name || '무명'}} (${{r.time}}) 총합: ${{r.total}}</button><br/>`;
-    }}
-    container.innerHTML = html;
-}}
-
-function loadHistoryItem(idx) {{
-    let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
-    if (history.length > idx) {{
-        let item = history[idx];
-        const textarea = window.parent.document.querySelector('textarea');
-        if (textarea) {{
-            textarea.value = JSON.stringify(item, null, 2);
-            textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
-        }}
-    }}
-}}
-
-window.onload = function() {{
-    showHistory();
-}};
-</script>
-
-<button onclick="saveResult()">💾 저장하기 (localStorage)</button>
-<div id="history_buttons" style="margin-top:10px; font-weight:bold;"></div>
-"""
-
-st.components.v1.html(js_code, height=400)
+for filename, data in saved:
+    label = f"{data.get('name', '무명')} ({data.get('time', '')}) - 총합: {data.get('total', '?')}"
+    if st.button(label, key=filename):
+        st.session_state["last_result"] = data
+        st.success(f"{data.get('name')} 결과를 불러왔습니다.")
