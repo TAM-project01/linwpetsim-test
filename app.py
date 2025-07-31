@@ -18,23 +18,20 @@ st.markdown("""
 **특기로 얻은 스탯은 제외하고 입력**해 주세요.
 """)
 
-# 상태 저장 초기화
 if "calculated" not in st.session_state:
     st.session_state["calculated"] = False
 if "result_json" not in st.session_state:
     st.session_state["result_json"] = None
+if "loaded_json_str" not in st.session_state:
+    st.session_state["loaded_json_str"] = ""
 
-# 저장된 기록 불러오기
-def load_history():
-    history_str = st.experimental_get_query_params().get("history_json", [None])[0]
-    if history_str:
-        try:
-            return json.loads(history_str)
-        except:
-            return None
-    return None
+# 저장된 기록 불러오기 (localStorage는 JS에서)
+# JS 코드가 로컬스토리지 읽어서 버튼 생성, 버튼 누르면 텍스트박스에 JSON 복사
 
-# 견종 및 스탯 매핑
+# 이름 입력
+name = st.text_input("이름 입력", value="무명")
+
+category_list = ["도베르만", "비글", "셰퍼드", "늑대"]
 d_stat_map = {
     "도베르만": "충성심",
     "비글": "속도",
@@ -43,12 +40,30 @@ d_stat_map = {
 }
 stat_order = ["인내력", "충성심", "속도", "체력"]
 
-# -- UI 입력 --
+# 불러오기용 텍스트 박스 (사용자 직접 복사 붙여넣기 가능)
+loaded_json_str = st.text_area("불러온 기록 JSON (버튼 클릭 후 불러오기 클릭)", height=120, value=st.session_state["loaded_json_str"])
 
-# 이름 입력
-name = st.text_input("이름 입력", value="무명")
+# 불러오기 버튼 (사용자가 클릭해야 Python에 반영)
+if st.button("불러오기"):
+    try:
+        loaded_data = json.loads(loaded_json_str)
+        st.session_state["loaded_json_str"] = loaded_json_str  # 상태 저장
+        # 자동으로 UI 세팅을 위해 변수 저장
+        st.session_state["load_category"] = loaded_data.get("category", category_list[0])
+        st.session_state["load_name"] = loaded_data.get("name", "무명")
+        st.session_state["load_level"] = loaded_data.get("level", 2)
+        st.session_state["load_detail"] = loaded_data.get("detail", {})
+        st.success("기록을 불러왔습니다.")
+    except Exception as e:
+        st.error(f"불러오기 실패: {e}")
 
-category = st.selectbox("\U0001F436 견종 선택", list(d_stat_map.keys()))
+# 불러온 데이터가 있으면 그걸 우선으로 UI 세팅, 없으면 기본값
+category = st.session_state.get("load_category", category_list[0])
+name = st.session_state.get("load_name", name)
+level = st.session_state.get("load_level", 2)
+detail = st.session_state.get("load_detail", {})
+
+category = st.selectbox("\U0001F436 견종 선택", category_list, index=category_list.index(category))
 d_stat = d_stat_map[category]
 remaining_stats = [s for s in stat_order if s != d_stat]
 a_stat, b_stat, c_stat = remaining_stats
@@ -57,34 +72,13 @@ exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
 
 col1, col2 = st.columns(2)
 
-# 불러오기용 숨긴 텍스트 에어리어
-loaded_json_str = st.text_area("불러온 기록 (수정하지 마세요)", height=10, key="loaded_json", label_visibility="hidden")
+# 불러온 값이 없으면 기본값
+a = detail.get(a_stat, 6)
+b = detail.get(b_stat, 6)
+c = detail.get(c_stat, 6)
+d = detail.get(d_stat, 14)
 
-# 기본값 세팅 (불러오기 시 자동 세팅용)
-def parse_loaded_json(text):
-    try:
-        obj = json.loads(text)
-        return obj
-    except:
-        return None
-
-loaded_data = parse_loaded_json(loaded_json_str)
-
-if loaded_data:
-    # 불러온 데이터에서 값 읽기
-    category = loaded_data.get("category", category)
-    name = loaded_data.get("name", name)
-    level = loaded_data.get("level", 2)
-    detail = loaded_data.get("detail", {})
-    a = detail.get(a_stat, 6)
-    b = detail.get(b_stat, 6)
-    c = detail.get(c_stat, 6)
-    d = detail.get(d_stat, 14)
-else:
-    level = 2
-    a, b, c, d = 6, 6, 6, 14
-
-# UI 입력 위젯 다시 (불러오기된 값으로 기본값 셋)
+# 숫자 입력
 level = col1.number_input("레벨 (2 이상)", min_value=2, value=level, step=1)
 a = col1.number_input(f"{a_stat} 수치", min_value=0, value=a, step=1)
 b = col2.number_input(f"{b_stat} 수치", min_value=0, value=b, step=1)
@@ -192,8 +186,9 @@ if st.session_state["calculated"]:
         }
     }
     st.session_state["result_json"] = json.dumps(result_obj, ensure_ascii=False)
+else:
+    result_obj = None
 
-# 결과 JSON을 JS에 넘김
 result_json = st.session_state.get("result_json", "null")
 
 js_code = f"""
@@ -241,10 +236,14 @@ function loadHistoryItem(idx) {{
     let history = JSON.parse(localStorage.getItem('petSimHistory') || '[]');
     if (history.length > idx) {{
         let item = history[idx];
+        // 아래 textarea id="loaded_json"에 JSON 문자열 복사
         const textarea = window.parent.document.querySelector('textarea[id="loaded_json"]');
         if (textarea) {{
             textarea.value = JSON.stringify(item, null, 2);
             textarea.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            alert('불러온 기록 JSON이 텍스트 박스에 복사되었습니다. \n상단 "불러오기" 버튼을 눌러 적용하세요.');
+        }} else {{
+            alert('불러오기용 텍스트 박스를 찾을 수 없습니다.');
         }}
     }}
 }}
@@ -258,4 +257,4 @@ window.onload = function() {{
 <div id="history_buttons" style="margin-top:10px; font-weight:bold;"></div>
 """
 
-components.html(js_code, height=400)
+components.html(js_code, height=450)
