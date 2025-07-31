@@ -5,15 +5,15 @@ import seaborn as sns
 import pandas as pd
 
 # ---------- 초기 설정 ----------
-plt.rcParams['font.family'] = 'DejaVu Sans'
-plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['font.family'] = 'DejaVu Sans' # 한글 폰트 설정 (Mac/Linux용)
+plt.rcParams['axes.unicode_minus'] = False # 마이너스 기호 깨짐 방지
 
-st.set_page_config(page_title="스탯 시뮬레이터", layout="centered")
-st.title("\U0001F4CA펫 스탯 시뮬레이터")
+st.set_page_config(page_title="펫 스탯 시뮬레이터", layout="centered")
+st.title("\U0001F4CA 펫 스탯 시뮬레이터")
 st.markdown("""
-레벨과 스탯 수치를 입력하면, 당신의 총합이 상위 몇 %인지 계산합니다.  
-주 스탯을 포함한 **인내력, 충성심, 속도, 체력** 기준이며,  
-**특기로 얻은 스탯은 제외하고 입력**해 주세요.
+펫의 **레벨**과 **스탯 수치**를 입력하여, 당신의 펫이 상위 몇 %에 해당하는지 확인해 보세요.
+이 시뮬레이터는 **인내력, 충성심, 속도, 체력** 스탯을 기준으로 계산하며,
+**특기로 얻은 스탯은 반드시 제외하고 입력**해 주세요.
 """)
 
 # ---------- 상태 저장 ----------
@@ -35,8 +35,8 @@ facility_bonus_pet_stats = {
         {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":5},
         {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":10},
         {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":1}, {"충성심":10},
-        {"충성심":2, "적극성":2, "속도":2}, {"충성심":2, "적극성":2, "속도":2}, {"적극성":1}, 
-        {"펫 경험치 보너스":5, "충성심":5, "체력":5, "속도":5, "적극성":1}, 
+        {"충성심":2, "적극성":2, "속도":2}, {"충성심":2, "적극성":2, "속도":2}, {"적극성":1},
+        {"펫 경험치 보너스":5, "충성심":5, "체력":5, "속도":5, "적극성":1},
         {"펫 경험치 보너스":5, "충성심":5, "적극성":5}
     ],
     "숙소": [
@@ -45,7 +45,7 @@ facility_bonus_pet_stats = {
         {"체력":1}, {"체력":1}, {"체력":1}, {"체력":1}, {"체력":10},
         {"체력":1}, {"체력":1}, {"체력":1}, {"체력":1}, {"체력":10},
         {"적극성":2}, {"적극성":2}, {"적극성":1},
-        {"펫 경험치 보너스":5, "적극성":1, "체력":5}, 
+        {"펫 경험치 보너스":5, "적극성":1, "체력":5},
         {"펫 경험치 보너스":5, "적극성":5, "체력":5}
     ],
     "훈련장": [
@@ -53,8 +53,8 @@ facility_bonus_pet_stats = {
         {"속도":1}, {"속도":1}, {"속도":1}, {"속도":1}, {"속도":5},
         {"속도":1}, {"속도":1}, {"속도":1}, {"속도":1}, {"속도":10},
         {"속도":1}, {"속도":1}, {"속도":1}, {"속도":1}, {"속도":10},
-        {"속도":2}, {"속도":2}, {"적극성":1}, 
-        {"펫 경험치 보너스":5, "적극성":1, "속도":5}, 
+        {"속도":2}, {"속도":2}, {"적극성":1},
+        {"펫 경험치 보너스":5, "적극성":1, "속도":5},
         {"펫 경험치 보너스":5, "적극성":5, "속도":5}
     ],
     "놀이터": [
@@ -62,8 +62,8 @@ facility_bonus_pet_stats = {
         {"체력":1}, {"충성심":1}, {"인내력":1}, {"속도":1}, {"적극성":1},
         {"충성심":1}, {"속도":1}, {"체력":1}, {"적극성":1}, {"적극성":3},
         {"인내력":1}, {"속도":1}, {"체력":1}, {"충성심":1}, {"적극성":3},
-        {"속도":2}, {"적극성":1}, {"체력":2}, 
-        {"펫 경험치 보너스":5, "인내력":5, "적극성":1}, 
+        {"속도":2}, {"적극성":1}, {"체력":2},
+        {"펫 경험치 보너스":5, "인내력":5, "적극성":1},
         {"펫 경험치 보너스":5, "인내력":5, "속도":5, "적극성":5}
     ],
     "울타리": [
@@ -104,7 +104,7 @@ c = col1.number_input(f"{c_stat} 수치", min_value=0, value=6, step=1)
 d = col2.number_input(f"{d_stat} 수치", min_value=0, value=14, step=1)
 
 st.markdown("---")
-st.markdown("### 시설 단계 선택 (0~20)")
+st.markdown("### 🏟️ 시설 단계 선택 (0~20)")
 
 col1, col2, col3, col4, col5 = st.columns(5)
 level_gm = col1.slider("관리소", min_value=0, max_value=20, value=0)
@@ -141,27 +141,41 @@ if st.session_state["calculated"]:
     upgrades = level - 1
 
     # 시뮬레이션은 순수 스탯 기준으로 수행
-    a_sim = pure_a + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
-    b_sim = pure_b + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
-    c_sim = pure_c + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
-    d_sim = pure_d + np.random.choice(d_vals, (num_sim, upgrades), p=d_probs).sum(axis=1)
+    # 레벨이 2 미만일 경우 upgrades가 음수가 되므로, 0보다 작으면 0으로 처리
+    upgrades_effective = max(0, upgrades)
+
+    a_sim = pure_a + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
+    b_sim = pure_b + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
+    c_sim = pure_c + np.random.choice(ac_vals, (num_sim, upgrades_effective), p=ac_probs).sum(axis=1)
+    d_sim = pure_d + np.random.choice(d_vals, (num_sim, upgrades_effective), p=d_probs).sum(axis=1)
 
     user_total_pure = pure_a + pure_b + pure_c + pure_d
     total_sim = a_sim + b_sim + c_sim + d_sim
 
-    total_percentile = np.sum(total_sim > user_total_pure) / num_sim * 100
-    a_percentile = np.sum(a_sim > pure_a) / num_sim * 100
-    b_percentile = np.sum(b_sim > pure_b) / num_sim * 100
-    c_percentile = np.sum(c_sim > pure_c) / num_sim * 100
-    d_percentile = np.sum(d_sim > pure_d) / num_sim * 100
+    # 백분위 계산 로직 수정: '상위 %'는 (100 - 내 스탯보다 작거나 같은 비율)로 계산
+    total_percentile_rank = np.sum(total_sim <= user_total_pure) / num_sim * 100
+    total_top_percent = 100 - total_percentile_rank
 
-    inc_a = (pure_a - 6) / upgrades
-    inc_b = (pure_b - 6) / upgrades
-    inc_c = (pure_c - 6) / upgrades
-    inc_d = (pure_d - 14) / upgrades
+    a_percentile_rank = np.sum(a_sim <= pure_a) / num_sim * 100
+    a_top_percent = 100 - a_percentile_rank
 
-    st.success(f"\U0001F4CC 시설 제외 펫 순수 스탯 총합: {user_total_pure}")
-    st.info(f"\U0001F4A1 {'체력 제외 시 ' if exclude_hp else ''}상위 약 {total_percentile:.2f}% 에 해당합니다.")
+    b_percentile_rank = np.sum(b_sim <= pure_b) / num_sim * 100
+    b_top_percent = 100 - b_percentile_rank
+
+    c_percentile_rank = np.sum(c_sim <= pure_c) / num_sim * 100
+    c_top_percent = 100 - c_percentile_rank
+
+    d_percentile_rank = np.sum(d_sim <= pure_d) / num_sim * 100
+    d_top_percent = 100 - d_percentile_rank
+
+    inc_a = (pure_a - 6) / upgrades if upgrades > 0 else 0
+    inc_b = (pure_b - 6) / upgrades if upgrades > 0 else 0
+    inc_c = (pure_c - 6) / upgrades if upgrades > 0 else 0
+    inc_d = (pure_d - 14) / upgrades if upgrades > 0 else 0
+
+
+    st.success(f"\U0001F4CC 펫의 **순수 스탯 총합**: **{user_total_pure}** (시설 보너스 제외)")
+    st.info(f"\U0001F4A1 현재 펫 스탯은 상위 약 **{total_top_percent:.2f}%** 에 해당합니다. {'(체력 제외)' if exclude_hp else ''}")
     st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 레벨: **{level}**")
     st.markdown(f"### \U0001F3D7 시설 단계")
     st.write(f"관리소: {level_gm}, 숙소: {level_inn}, 훈련장: {level_training}, 놀이터: {level_playground}, 울타리: {level_fence}")
@@ -176,20 +190,20 @@ if st.session_state["calculated"]:
             total_bonus.get(d_stat, 0),
         ],
         "순수 펫 스탯": [pure_a, pure_b, pure_c, pure_d],
-        "상위 %": [f"{a_percentile:.2f}%", f"{b_percentile:.2f}%", f"{c_percentile:.2f}%", f"{d_percentile:.2f}%"],
+        "상위 %": [f"{a_top_percent:.2f}%", f"{b_top_percent:.2f}%", f"{c_top_percent:.2f}%", f"{d_top_percent:.2f}%"],
         "Lv당 평균 증가량": [f"+{inc_a:.2f}", f"+{inc_b:.2f}", f"+{inc_c:.2f}", f"+{inc_d:.2f}"]
     })
     st.table(df)
 
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(total_sim, bins=50, kde=True, ax=ax, color='skyblue')
-    ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pure Total Stat')
-    ax.set_title(f"{'체력 제외 시 ' if exclude_hp else ''}Stat Total Distribution (Pure Stats)")
-    ax.set_xlabel("Total Stat (Pure)")
+    ax.axvline(user_total_pure, color='red', linestyle='--', label='나의 순수 스탯 총합')
+    ax.set_title(f"펫 순수 스탯 총합 분포 {'(체력 제외)' if exclude_hp else ''}")
+    ax.set_xlabel("순수 스탯 총합")
     ax.legend()
     st.pyplot(fig)
 
-    calc_goal = st.checkbox("\U0001F3AF 20레벨 목표 스탯 도달 확률 보기")
+    calc_goal = st.checkbox("\U0001F3AF **20레벨 목표 스탯 도달 확률** 확인하기")
 
     if calc_goal:
         st.subheader("목표 스탯 입력")
@@ -212,10 +226,10 @@ if st.session_state["calculated"]:
             p_d = np.mean(d_20 >= target_d) * 100
             p_all = np.mean((a_20 >= target_a) & (b_20 >= target_b) & (c_20 >= target_c) & (d_20 >= target_d)) * 100
 
-            st.write(f"\U0001F539 {a_stat} 목표 도달 확률: **{p_a:.2f}%**")
-            st.write(f"\U0001F539 {b_stat} 목표 도달 확률: **{p_b:.2f}%**")
-            st.write(f"\U0001F539 {c_stat} 목표 도달 확률: **{p_c:.2f}%**")
-            st.write(f"\U0001F539 {d_stat} (주 스탯) 목표 도달 확률: **{p_d:.2f}%**")
-            st.success(f"\U0001F3C6 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
+            st.write(f"\U0001F539 **{a_stat}** 목표 도달 확률: **{p_a:.2f}%**")
+            st.write(f"\U0001F539 **{b_stat}** 목표 도달 확률: **{p_b:.2f}%**")
+            st.write(f"\U0001F539 **{c_stat}** 목표 도달 확률: **{p_c:.2f}%**")
+            st.write(f"\U0001F539 **{d_stat}** (주 스탯) 목표 도달 확률: **{p_d:.2f}%**")
+            st.success(f"\U0001F3C6 **모든 목표 스탯 동시 달성 확률**: **{p_all:.2f}%**")
         else:
             st.warning("이미 20레벨입니다. 목표 시뮬레이션은 생략됩니다.")
