@@ -158,12 +158,16 @@ if st.session_state["calculated"]:
     user_total_pure = pure_a + pure_b + pure_c + pure_d
     total_sim = a_sim + b_sim + c_sim + d_sim
 
+    st.write(f"pure_a: {pure_a}, a_sim min: {a_sim.min()}, a_sim max: {a_sim.max()}")
+    st.write(f"user_total_pure: {user_total_pure}, total_sim min: {total_sim.min()}, total_sim max: {total_sim.max()}")
+
     # 개선: > 연산자만 사용
-    total_percentile = np.sum(total_sim > user_total_pure) / num_sim * 100
-    a_percentile = np.sum(a_sim > pure_a) / num_sim * 100
-    b_percentile = np.sum(b_sim > pure_b) / num_sim * 100
-    c_percentile = np.sum(c_sim > pure_c) / num_sim * 100
-    d_percentile = np.sum(d_sim > pure_d) / num_sim * 100
+    total_percentile = np.sum(total_sim >= user_total_pure) / num_sim * 100
+    a_percentile = np.sum(a_sim >= pure_a) / num_sim * 100
+    b_percentile = np.sum(b_sim >= pure_b) / num_sim * 100
+    c_percentile = np.sum(c_sim >= pure_c) / num_sim * 100
+    d_percentile = np.sum(d_sim >= pure_d) / num_sim * 100
+
 
     inc_a = (pure_a - 6) / upgrades
     inc_b = (pure_b - 6) / upgrades
