@@ -14,8 +14,8 @@ st.markdown("""
 레벨과 스탯 수치를 입력하면, 당신의 총합이 상위 몇 %인지 계산합니다.
 주 스탯을 포함한 **인내력, 충성심, 속도, 체력** 기준입니다.
 
-**펫 스탯은 시설물로 증가된 스탯을 포함하여 입력**해 주세요.
-시설물 레벨을 입력하면, 시뮬레이터에서 시설물 증가분을 제외한 **순수 펫 스탯**을 기준으로 계산합니다.
+**펫 스탯은 시설물 및 특기로 증가된 스탯을 포함하여 입력**해 주세요.
+시설물 레벨과 각 특기 단계를 입력하면, 시뮬레이터에서 해당 증가분을 제외한 **순수 펫 스탯**을 기준으로 계산합니다.
 """)
 
 # ---------- 상태 저장 ----------
@@ -77,17 +77,45 @@ facility_rewards_data = {
     ]
 }
 
+# ---------- 특기 보상 데이터 (누적 방식 아님, 각 단계는 해당 단계의 고유 보너스) ----------
+# '노비스 래피드' 3단계는 '속도 +3'으로 수정 반영
+specialty_rewards_by_type_and_stage = {
+    "노비스 에너지": {0: {}, 1: {"체력": 1}, 2: {"체력": 2}, 3: {"체력": 3}},
+    "노비스 터내서티": {0: {}, 1: {"인내력": 1}, 2: {"인내력": 2}, 3: {"인내력": 3}},
+    "노비스 링크리지": {0: {}, 1: {"충성심": 1}, 2: {"충성심": 2}, 3: {"충성심": 3}},
+    "노비스 래피드": {0: {}, 1: {"속도": 1}, 2: {"속도": 2}, 3: {"속도": 3}}, # 속도+3으로 수정됨
+
+    "비기너 에너지": {0: {}, 1: {"체력": 1}, 2: {"체력": 2}, 3: {"체력": 3}, 4: {"체력": 5}},
+    "비기너 터내서티": {0: {}, 1: {"인내력": 1}, 2: {"인내력": 2}, 3: {"인내력": 3}, 4: {"인내력": 5}},
+    "비기너 링크리지": {0: {}, 1: {"충성심": 1}, 2: {"충성심": 2}, 3: {"충성심": 3}, 4: {"충성심": 5}},
+    "비기너 래피드": {0: {}, 1: {"속도": 1}, 2: {"속도": 3}, 3: {"속도": 5}, 4: {"속도": 5}}, # 비기너 래피드 보너스는 속도 +1, +3, +5, +5로 반영
+
+    "레이즈 에너지": {0: {}, 1: {"체력": 1}, 2: {"체력": 2}, 3: {"체력": 3}, 4: {"체력": 4}, 5: {"체력": 5}},
+    "레이즈 터내서티": {0: {}, 1: {"인내력": 1}, 2: {"인내력": 2}, 3: {"인내력": 3}, 4: {"인내력": 4}, 5: {"인내력": 5}},
+    "레이즈 링크리지": {0: {}, 1: {"충성심": 1}, 2: {"충성심": 2}, 3: {"충성심": 3}, 4: {"충성심": 4}, 5: {"충성심": 5}},
+    "레이즈 래피드": {0: {}, 1: {"속도": 1}, 2: {"속도": 2}, 3: {"속도": 3}, 4: {"속도": 4}, 5: {"속도": 5}},
+}
+
 def calculate_accumulated_facility_stats(facility_name, level):
-    # Only sum the 4 main stats for percentile calculation
     stats_to_sum = {"인내력": 0, "충성심": 0, "속도": 0, "체력": 0}
     if facility_name in facility_rewards_data:
-        # Level 0 means no training, so loop from 0 to level-1 (inclusive)
         for i in range(min(level, len(facility_rewards_data[facility_name]))):
             rewards_at_level = facility_rewards_data[facility_name][i]
             for stat, value in rewards_at_level.items():
                 if stat in stats_to_sum:
                     stats_to_sum[stat] += value
     return stats_to_sum
+
+def get_specialty_bonus_for_stage(specialty_type, stage):
+    # Specialty is NOT cumulative, so just get the bonus for the specific stage
+    stats_to_add = {"인내력": 0, "충성심": 0, "속도": 0, "체력": 0}
+    if specialty_type in specialty_rewards_by_type_and_stage:
+        if stage in specialty_rewards_by_type_and_stage[specialty_type]:
+            rewards_at_stage = specialty_rewards_by_type_and_stage[specialty_type][stage]
+            for stat, value in rewards_at_stage.items():
+                if stat in stats_to_add:
+                    stats_to_add[stat] += value
+    return stats_to_add
 
 # ---------- 입력 ----------
 category = st.selectbox("\U0001F436 견종 선택", list(d_stat_map.keys()))
@@ -97,7 +125,7 @@ a_stat, b_stat, c_stat = remaining_stats # Other stats
 
 exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
 
-st.subheader("펫 현재 정보 (시설물 스탯 포함하여 입력)")
+st.subheader("펫 현재 정보 (시설물 스탯 및 특기 스탯 포함하여 입력)")
 col1, col2 = st.columns(2)
 level = col1.number_input("펫 레벨 (1 이상)", min_value=1, value=1, step=1)
 # 사용자가 입력하는 스탯은 시설물 스탯을 포함한 값
@@ -114,6 +142,31 @@ training_ground_level = st.slider("훈련장 레벨", min_value=0, max_value=20,
 playground_level = st.slider("놀이터 레벨", min_value=0, max_value=20, value=0, step=1)
 fence_level = st.slider("울타리 레벨", min_value=0, max_value=20, value=0, step=1)
 
+st.subheader("특기 단계 (슬라이더로 조절)")
+st.markdown("특정 단계까지만 활성화됩니다. (예: 노비스는 3단계까지, 비기너는 4단계까지, 레이즈는 5단계까지)")
+
+# Specialty sliders
+col_novice1, col_novice2 = st.columns(2)
+novice_energy_stage = col_novice1.slider("노비스 에너지 단계 (4레벨 돌파)", min_value=0, max_value=3, value=0, step=1)
+novice_tenacity_stage = col_novice2.slider("노비스 터내서티 단계 (4레벨 돌파)", min_value=0, max_value=3, value=0, step=1)
+novice_linkage_stage = col_novice1.slider("노비스 링크리지 단계 (4레벨 돌파)", min_value=0, max_value=3, value=0, step=1)
+novice_rapid_stage = col_novice2.slider("노비스 래피드 단계 (4레벨 돌파)", min_value=0, max_value=3, value=0, step=1)
+
+st.markdown("---")
+
+col_beginner1, col_beginner2 = st.columns(2)
+beginner_energy_stage = col_beginner1.slider("비기너 에너지 단계 (9레벨 돌파)", min_value=0, max_value=4, value=0, step=1)
+beginner_tenacity_stage = col_beginner2.slider("비기너 터내서티 단계 (9레벨 돌파)", min_value=0, max_value=4, value=0, step=1)
+beginner_linkage_stage = col_beginner1.slider("비기너 링크리지 단계 (9레벨 돌파)", min_value=0, max_value=4, value=0, step=1)
+beginner_rapid_stage = col_beginner2.slider("비기너 래피드 단계 (9레벨 돌파)", min_value=0, max_value=4, value=0, step=1)
+
+st.markdown("---")
+
+col_raise1, col_raise2 = st.columns(2)
+raise_energy_stage = col_raise1.slider("레이즈 에너지 단계 (14레벨 돌파)", min_value=0, max_value=5, value=0, step=1)
+raise_tenacity_stage = col_raise2.slider("레이즈 터내서티 단계 (14레벨 돌파)", min_value=0, max_value=5, value=0, step=1)
+raise_linkage_stage = col_raise1.slider("레이즈 링크리지 단계 (14레벨 돌파)", min_value=0, max_value=5, value=0, step=1)
+raise_rapid_stage = col_raise2.slider("레이즈 래피드 단계 (14레벨 돌파)", min_value=0, max_value=5, value=0, step=1)
 
 # ---------- 시뮬레이션용 상수 ----------
 num_sim = 100_000
@@ -144,13 +197,36 @@ if st.session_state["calculated"]:
         for stat, value in bonuses.items():
             total_facility_bonuses[stat] += value
 
-    # Calculate user's PURE stats (시설물 스탯 제외)
+    # Calculate total specialty bonuses
+    total_specialty_bonuses = {stat: 0 for stat in stat_order}
+    
+    specialty_inputs = {
+        "노비스 에너지": novice_energy_stage,
+        "노비스 터내서티": novice_tenacity_stage,
+        "노비스 링크리지": novice_linkage_stage,
+        "노비스 래피드": novice_rapid_stage,
+        "비기너 에너지": beginner_energy_stage,
+        "비기너 터내서티": beginner_tenacity_stage,
+        "비기너 링크리지": beginner_linkage_stage,
+        "비기너 래피드": beginner_rapid_stage,
+        "레이즈 에너지": raise_energy_stage,
+        "레이즈 터내서티": raise_tenacity_stage,
+        "레이즈 링크리지": raise_linkage_stage,
+        "레이즈 래피드": raise_rapid_stage
+    }
+
+    for specialty_type, stage in specialty_inputs.items():
+        bonuses = get_specialty_bonus_for_stage(specialty_type, stage)
+        for stat, value in bonuses.items():
+            total_specialty_bonuses[stat] += value
+
+    # Calculate user's PURE stats (시설물 스탯 및 특기 스탯 제외)
     # Ensure pure stats don't go below initial base stats
     user_pure_stats = {
-        a_stat: max(base_stats_initial[a_stat], a_input - total_facility_bonuses[a_stat]),
-        b_stat: max(base_stats_initial[b_stat], b_input - total_facility_bonuses[b_stat]),
-        c_stat: max(base_stats_initial[c_stat], c_input - total_facility_bonuses[c_stat]),
-        d_stat: max(main_stat_initial, d_input - total_facility_bonuses[d_stat])
+        a_stat: max(base_stats_initial[a_stat], a_input - total_facility_bonuses[a_stat] - total_specialty_bonuses[a_stat]),
+        b_stat: max(base_stats_initial[b_stat], b_input - total_facility_bonuses[b_stat] - total_specialty_bonuses[b_stat]),
+        c_stat: max(base_stats_initial[c_stat], c_input - total_facility_bonuses[c_stat] - total_specialty_bonuses[c_stat]),
+        d_stat: max(main_stat_initial, d_input - total_facility_bonuses[d_stat] - total_specialty_bonuses[d_stat])
     }
     
     user_total_pure = 0
@@ -203,15 +279,15 @@ if st.session_state["calculated"]:
     inc_c = (user_pure_stats[c_stat] - base_stats_initial[c_stat]) / upgrades if upgrades > 0 else 0
     inc_d = (user_pure_stats[d_stat] - main_stat_initial) / upgrades if upgrades > 0 else 0
 
-    st.success(f"\U0001F4CC 총합 (시설물 제외 순수 스탯): {user_total_pure}")
+    st.success(f"\U0001F4CC 총합 (시설물 및 특기 제외 순수 스탯): {user_total_pure}")
     st.info(f"\U0001F4A1 {'체력 제외 시 ' if exclude_hp else ''}상위 약 {total_percentile:.2f}% 에 해당합니다.")
     st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 펫 레벨: **{level}**")
 
     # Display individual stats including facility bonuses
     df_data = {
         "스탯": [a_stat, b_stat, c_stat, d_stat],
-        "입력 수치 (시설물 포함)": [a_input, b_input, c_input, d_input],
-        "순수 펫 스탯 (시설물 제외)": [
+        "입력 수치 (시설물/특기 포함)": [a_input, b_input, c_input, d_input],
+        "순수 펫 스탯 (시설물/특기 제외)": [
             user_pure_stats[a_stat],
             user_pure_stats[b_stat],
             user_pure_stats[c_stat],
@@ -223,8 +299,14 @@ if st.session_state["calculated"]:
             total_facility_bonuses[c_stat],
             total_facility_bonuses[d_stat]
         ],
+        "특기로 인한 증가량": [
+            total_specialty_bonuses[a_stat],
+            total_specialty_bonuses[b_stat],
+            total_specialty_bonuses[c_stat],
+            total_specialty_bonuses[d_stat]
+        ],
         "상위 % (순수 스탯 기준)": [f"{a_percentile:.2f}%", f"{b_percentile:.2f}%", f"{c_percentile:.2f}%", f"{d_percentile:.2f}%"],
-        "펫 레벨당 평균 증가량 (시설물 제외)": [f"+{inc_a:.2f}", f"+{inc_b:.2f}", f"+{inc_c:.2f}", f"+{inc_d:.2f}"]
+        "펫 레벨당 평균 증가량 (시설물/특기 제외)": [f"+{inc_a:.2f}", f"+{inc_b:.2f}", f"+{inc_c:.2f}", f"+{inc_d:.2f}"]
     }
     df = pd.DataFrame(df_data)
     st.table(df)
@@ -232,7 +314,7 @@ if st.session_state["calculated"]:
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
     ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pure Total')
-    ax.set_title(f"{'체력 제외 ' if exclude_hp else ''}총 스탯 분포 (시설물 제외 순수 스탯)")
+    ax.set_title(f"{'체력 제외 ' if exclude_hp else ''}총 스탯 분포 (시설물 및 특기 제외 순수 스탯)")
     ax.set_xlabel("총 스탯")
     ax.legend()
     st.pyplot(fig)
@@ -265,11 +347,11 @@ if st.session_state["calculated"]:
                 sim_c_at_20_pure += np.random.choice(ac_vals, (num_sim, 19), p=ac_probs).sum(axis=1)
                 sim_d_at_20_pure += np.random.choice(d_vals, (num_sim, 19), p=d_probs).sum(axis=1)
 
-            # Add facility bonuses to the simulated 20-level pure stats to compare with target (which is total stat)
-            sim_a_at_20_final = sim_a_at_20_pure + total_facility_bonuses[a_stat]
-            sim_b_at_20_final = sim_b_at_20_pure + total_facility_bonuses[b_stat]
-            sim_c_at_20_final = sim_c_at_20_pure + total_facility_bonuses[c_stat]
-            sim_d_at_20_final = sim_d_at_20_pure + total_facility_bonuses[d_stat]
+            # Add facility and specialty bonuses to the simulated 20-level pure stats to compare with target (which is total stat)
+            sim_a_at_20_final = sim_a_at_20_pure + total_facility_bonuses[a_stat] + total_specialty_bonuses[a_stat]
+            sim_b_at_20_final = sim_b_at_20_pure + total_facility_bonuses[b_stat] + total_specialty_bonuses[b_stat]
+            sim_c_at_20_final = sim_c_at_20_pure + total_facility_bonuses[c_stat] + total_specialty_bonuses[c_stat]
+            sim_d_at_20_final = sim_d_at_20_pure + total_facility_bonuses[d_stat] + total_specialty_bonuses[d_stat]
 
             p_a = np.mean(sim_a_at_20_final >= target_a) * 100
             p_b = np.mean(sim_b_at_20_final >= target_b) * 100
