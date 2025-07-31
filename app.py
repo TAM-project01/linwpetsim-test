@@ -33,7 +33,7 @@ stat_order = ["인내력", "충성심", "속도", "체력"]
 base_stats_initial = {"인내력": 6, "충성심": 6, "속도": 6, "체력": 6} # Default base for non-main stat
 main_stat_initial = 14 # Default base for main stat
 
-# ---------- 시설물 보상 데이터 ----------
+# ---------- 펫 타운 시설 데이터 ----------
 facility_rewards_data = {
     "관리소": [
         {"충성심": 1}, {"충성심": 1}, {"충성심": 1}, {"충성심": 1}, {"충성심": 5},
@@ -124,7 +124,7 @@ a_stat, b_stat, c_stat = remaining_stats # Other stats
 
 exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기")
 
-st.subheader("펫 현재 정보 (시설물 스탯 및 특기 스탯 포함하여 입력)")
+st.subheader("펫 현재 정보 (펫 타운 스탯 및 특기 스탯 포함하여 입력)")
 col1, col2 = st.columns(2)
 level = col1.number_input("펫 레벨 (1 이상)", min_value=1, value=1, step=1)
 # 사용자가 입력하는 스탯은 시설물 스탯을 포함한 값
@@ -133,7 +133,7 @@ b_input = col2.number_input(f"{b_stat} 수치", min_value=0, value=base_stats_in
 c_input = col1.number_input(f"{c_stat} 수치", min_value=0, value=base_stats_initial[c_stat], step=1)
 d_input = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1)
 
-st.subheader("시설물 레벨")
+st.subheader("펫 타운 시설 레벨")
 # Slider for facility levels
 management_office_level = st.slider("관리소 레벨", min_value=0, max_value=20, value=0, step=1)
 dormitory_level = st.slider("숙소 레벨", min_value=0, max_value=20, value=0, step=1)
@@ -277,21 +277,21 @@ if st.session_state["calculated"]:
     inc_c = (user_pure_stats[c_stat] - base_stats_initial[c_stat]) / upgrades if upgrades > 0 else 0
     inc_d = (user_pure_stats[d_stat] - main_stat_initial) / upgrades if upgrades > 0 else 0
 
-    st.success(f"\U0001F4CC 총합 (시설물 및 특기 제외 순수 스탯): {user_total_pure}")
+    st.success(f"\U0001F4CC 총합 (펫 타운 및 특기 제외 순수 스탯): {user_total_pure}")
     st.info(f"\U0001F4A1 {'체력 제외 시 ' if exclude_hp else ''}상위 약 {total_percentile:.2f}% 에 해당합니다.")
     st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 펫 레벨: **{level}**")
 
     # Display individual stats including facility bonuses
     df_data = {
         "스탯": [a_stat, b_stat, c_stat, d_stat],
-        "입력 수치 (시설물/특기 포함)": [a_input, b_input, c_input, d_input],
-        "순수 펫 스탯 (시설물/특기 제외)": [
+        "입력 수치 (펫 타운/특기 포함)": [a_input, b_input, c_input, d_input],
+        "순수 펫 스탯 (펫 타운/특기 제외)": [
             user_pure_stats[a_stat],
             user_pure_stats[b_stat],
             user_pure_stats[c_stat],
             user_pure_stats[d_stat]
         ],
-        "시설물로 인한 증가량": [
+        "펫 타운으로 인한 증가량": [
             total_facility_bonuses[a_stat],
             total_facility_bonuses[b_stat],
             total_facility_bonuses[c_stat],
