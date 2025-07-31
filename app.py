@@ -150,8 +150,8 @@ input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=m
 
 # 적극성 스탯 입력 필드 추가 (사용자 입력을 받지만, 펫 스탯 총합 계산에는 포함되지 않음)
 input_stats["적극성"] = st.number_input(
-    f"적극성 수치 (고정값 + 펫 타운 + 특기 포함)",
-    min_value=0,
+    f"적극성 수치",
+    min_value=3,
     value=base_stats_initial["적극성"],
     step=1
 )
