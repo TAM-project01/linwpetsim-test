@@ -284,7 +284,7 @@ with st.expander("\U0001F3C1 특기 (클릭하여 펼치기)", expanded=False): 
     raise_specialty_types = [s for s in specialty_rewards_by_type_and_stage if s.startswith("레이즈")]
     render_specialty_section("레이즈 (14레벨 돌파)", "raise_specialties", raise_specialty_types, 5) 
 
-    st.markdown("---")
+    st.markdown("---") # 여기에 st.markdown()을 추가하여 오류 수정.
 
 # ---------- 시뮬레이션용 상수 ----------
 num_sim = 100_000
@@ -427,8 +427,8 @@ if st.session_state["calculated"]:
     ax.legend()
     st.pyplot(fig)
 
-    ---
-    ### 목표 스탯 입력 (20레벨 달성 시점의 총 스탯)
+    st.markdown("---") # 여기에 st.markdown()을 추가하여 오류 수정.
+    st.subheader("목표 스탯 입력 (20레벨 달성 시점의 총 스탯)") # subheader도 expander 밖으로 이동
     calc_goal = st.checkbox("\U0001F3AF 20레벨 목표 스탯 도달 확률 보기", key="calc_goal_checkbox")
 
     if calc_goal:
