@@ -106,14 +106,13 @@ b_input = col2.number_input(f"{b_stat} 수치", min_value=0, value=base_stats_in
 c_input = col1.number_input(f"{c_stat} 수치", min_value=0, value=base_stats_initial[c_stat], step=1)
 d_input = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1)
 
-st.subheader("시설물 레벨 (0레벨부터 시작)")
-col_fac1, col_fac2, col_fac3 = st.columns(3)
-management_office_level = col_fac1.number_input("관리소 레벨", min_value=0, value=0, step=1, max_value=20)
-dormitory_level = col_fac2.number_input("숙소 레벨", min_value=0, value=0, step=1, max_value=20)
-training_ground_level = col_fac3.number_input("훈련장 레벨", min_value=0, value=0, step=1, max_value=20)
-col_fac4, col_fac5 = st.columns(2)
-playground_level = col_fac4.number_input("놀이터 레벨", min_value=0, value=0, step=1, max_value=20)
-fence_level = col_fac5.number_input("울타리 레벨", min_value=0, value=0, step=1, max_value=20)
+st.subheader("시설물 레벨 (슬라이더로 조절)")
+# Slider for facility levels
+management_office_level = st.slider("관리소 레벨", min_value=0, max_value=20, value=0, step=1)
+dormitory_level = st.slider("숙소 레벨", min_value=0, max_value=20, value=0, step=1)
+training_ground_level = st.slider("훈련장 레벨", min_value=0, max_value=20, value=0, step=1)
+playground_level = st.slider("놀이터 레벨", min_value=0, max_value=20, value=0, step=1)
+fence_level = st.slider("울타리 레벨", min_value=0, max_value=20, value=0, step=1)
 
 
 # ---------- 시뮬레이션용 상수 ----------
@@ -218,6 +217,12 @@ if st.session_state["calculated"]:
             user_pure_stats[c_stat],
             user_pure_stats[d_stat]
         ],
+        "시설물로 인한 증가량": [
+            total_facility_bonuses[a_stat],
+            total_facility_bonuses[b_stat],
+            total_facility_bonuses[c_stat],
+            total_facility_bonuses[d_stat]
+        ],
         "상위 % (순수 스탯 기준)": [f"{a_percentile:.2f}%", f"{b_percentile:.2f}%", f"{c_percentile:.2f}%", f"{d_percentile:.2f}%"],
         "펫 레벨당 평균 증가량 (시설물 제외)": [f"+{inc_a:.2f}", f"+{inc_b:.2f}", f"+{inc_c:.2f}", f"+{inc_d:.2f}"]
     }
@@ -232,6 +237,8 @@ if st.session_state["calculated"]:
     ax.legend()
     st.pyplot(fig)
 
+    # ---
+    st.markdown("---")
     # ---------- 목표 스탯 입력 ----------
     calc_goal = st.checkbox("\U0001F3AF 20레벨 목표 스탯 도달 확률 보기")
 
