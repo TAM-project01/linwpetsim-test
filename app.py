@@ -40,7 +40,7 @@ facility_bonus_pet_stats = {
         {"펫 경험치 보너스":5, "충성심":5, "적극성":5}
     ],
     "숙소": [
-        {}, # 0단계 (0레벨) 보너스 없음
+        {}, # 0단계
         {"체력":1}, {"체력":1}, {"체력":1}, {"체력":1}, {"체력":5},
         {"체력":1}, {"체력":1}, {"체력":1}, {"체력":1}, {"체력":10},
         {"체력":1}, {"체력":1}, {"체력":1}, {"체력":1}, {"체력":10},
@@ -113,7 +113,6 @@ level_training = col3.slider("훈련장", min_value=0, max_value=20, value=0)
 level_playground = col4.slider("놀이터", min_value=0, max_value=20, value=0)
 level_fence = col5.slider("울타리", min_value=0, max_value=20, value=0)
 
-# ---------- 시설 보너스 누적 계산 ----------
 bonus_gm = calc_cumulative_bonus("관리소", level_gm)
 bonus_inn = calc_cumulative_bonus("숙소", level_inn)
 bonus_training = calc_cumulative_bonus("훈련장", level_training)
@@ -124,32 +123,24 @@ total_bonus = {"인내력":0, "충성심":0, "속도":0, "체력":0}
 for stat in total_bonus.keys():
     total_bonus[stat] = bonus_gm[stat] + bonus_inn[stat] + bonus_training[stat] + bonus_playground[stat] + bonus_fence[stat]
 
-# ---------- 시설 보너스 제외한 순수 펫 스탯 계산 ----------
-pure_a = a - total_bonus.get(a_stat, 0)
-pure_b = b - total_bonus.get(b_stat, 0)
-pure_c = c - total_bonus.get(c_stat, 0)
-pure_d = d - total_bonus.get(d_stat, 0)
+pure_a = max(a - total_bonus.get(a_stat, 0), 0)
+pure_b = max(b - total_bonus.get(b_stat, 0), 0)
+pure_c = max(c - total_bonus.get(c_stat, 0), 0)
+pure_d = max(d - total_bonus.get(d_stat, 0), 0)
 
-pure_a = max(pure_a, 0)
-pure_b = max(pure_b, 0)
-pure_c = max(pure_c, 0)
-pure_d = max(pure_d, 0)
-
-# ---------- 시뮬레이션 상수 ----------
 num_sim = 100_000
 ac_vals = [0, 1, 2, 3]
 ac_probs = [0.15, 0.5, 0.3, 0.05]
 d_vals = [1, 2, 3, 4, 5, 6, 7]
 d_probs = [0.05, 0.15, 0.3, 0.2, 0.15, 0.1, 0.05]
 
-# ---------- 결과 계산 버튼 ----------
 if st.button("결과 계산"):
     st.session_state["calculated"] = True
 
-# ---------- 결과 표시 ----------
 if st.session_state["calculated"]:
     upgrades = level - 1
 
+    # 시뮬레이션은 순수 스탯 기준으로 수행
     a_sim = pure_a + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
     b_sim = pure_b + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
     c_sim = pure_c + np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
@@ -158,24 +149,16 @@ if st.session_state["calculated"]:
     user_total_pure = pure_a + pure_b + pure_c + pure_d
     total_sim = a_sim + b_sim + c_sim + d_sim
 
-    st.write(f"pure_a: {pure_a}, a_sim min: {a_sim.min()}, a_sim max: {a_sim.max()}")
-    st.write(f"user_total_pure: {user_total_pure}, total_sim min: {total_sim.min()}, total_sim max: {total_sim.max()}")
-
-    # 개선: > 연산자만 사용
-    total_percentile = np.sum(total_sim >= user_total_pure) / num_sim * 100
-    a_percentile = np.sum(a_sim >= pure_a) / num_sim * 100
-    b_percentile = np.sum(b_sim >= pure_b) / num_sim * 100
-    c_percentile = np.sum(c_sim >= pure_c) / num_sim * 100
-    d_percentile = np.sum(d_sim >= pure_d) / num_sim * 100
-
+    total_percentile = np.sum(total_sim > user_total_pure) / num_sim * 100
+    a_percentile = np.sum(a_sim > pure_a) / num_sim * 100
+    b_percentile = np.sum(b_sim > pure_b) / num_sim * 100
+    c_percentile = np.sum(c_sim > pure_c) / num_sim * 100
+    d_percentile = np.sum(d_sim > pure_d) / num_sim * 100
 
     inc_a = (pure_a - 6) / upgrades
     inc_b = (pure_b - 6) / upgrades
     inc_c = (pure_c - 6) / upgrades
     inc_d = (pure_d - 14) / upgrades
-
-    st.write(f"User pure total stat: {user_total_pure}")
-    st.write(f"Simulated total stat min: {total_sim.min()}, max: {total_sim.max()}, mean: {total_sim.mean():.2f}")
 
     st.success(f"\U0001F4CC 시설 제외 펫 순수 스탯 총합: {user_total_pure}")
     st.info(f"\U0001F4A1 {'체력 제외 시 ' if exclude_hp else ''}상위 약 {total_percentile:.2f}% 에 해당합니다.")
@@ -201,7 +184,7 @@ if st.session_state["calculated"]:
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(total_sim, bins=50, kde=True, ax=ax, color='skyblue')
     ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pure Total Stat')
-    ax.set_title(f"{'Excl. HP ' if exclude_hp else ''}Stat Total Distribution (Pure Stats)")
+    ax.set_title(f"{'체력 제외 시 ' if exclude_hp else ''}Stat Total Distribution (Pure Stats)")
     ax.set_xlabel("Total Stat (Pure)")
     ax.legend()
     st.pyplot(fig)
