@@ -87,8 +87,28 @@ d_stat_map = {
 stat_order = ["인내력", "충성심", "속도", "체력"]
 all_stats_for_pure_calculation = ["인내력", "충성심", "속도", "체력", "적극성"]
 
-base_stats_initial = {"인내력": 6, "충성심": 6, "속도": 6, "체력": 6, "적극성": 3} # Default base for non-main stat
-main_stat_initial = 14 # Default base for main stat
+# --- 변경 시작: 펫 종류별 초기 스탯 및 레벨업 확률 정의 ---
+initial_stats_data = {
+    "일반 펫": {
+        "main_stat": 14,
+        "sub_stat": 6,
+        "aggressiveness": 3,
+        "ac_vals": [0, 1, 2, 3],
+        "ac_probs": [0.15, 0.50, 0.30, 0.05],
+        "d_vals": [1, 2, 3, 4, 5, 6, 7],
+        "d_probs": [0.05, 0.15, 0.30, 0.20, 0.15, 0.10, 0.05]
+    },
+    "심연 펫": {
+        "main_stat": 21, # 수정된 심연 펫 주 스탯 초기값
+        "sub_stat": 7,
+        "aggressiveness": 3,
+        "ac_vals": [0, 1, 2, 3],
+        "ac_probs": [0.135, 0.445, 0.360, 0.060],
+        "d_vals": [1, 2, 3, 4, 5, 6, 7],
+        "d_probs": [0.0425, 0.1275, 0.2550, 0.2300, 0.1725, 0.1150, 0.0575]
+    }
+}
+# --- 변경 끝 ---
 
 # ---------- 펫 타운 시설 데이터 (최종 확인) ----------
 facility_rewards_data = {
@@ -179,10 +199,53 @@ def get_specialty_bonus_for_stage(specialty_type, stage):
                     stats_to_add[stat] += value
     return stats_to_add
 
+# --- 변경 시작: 시뮬레이션 로직 함수화 (다른 펫 타입 시뮬레이션을 위해) ---
+def run_simulation(pet_type_key, user_pure_stats, upgrades, exclude_hp, d_stat, num_sim):
+    sim_data = initial_stats_data[pet_type_key]
+    
+    # 펫 종류에 따른 초기 스탯 가져오기
+    sim_main_stat_initial = sim_data["main_stat"]
+    sim_sub_stat_initial = sim_data["sub_stat"]
+    
+    # 펫 종류에 따른 레벨업 확률 가져오기
+    sim_ac_vals = sim_data["ac_vals"]
+    sim_ac_probs = sim_data["ac_probs"]
+    sim_d_vals = sim_data["d_vals"]
+    sim_d_probs = sim_data["d_probs"]
+
+    simulated_pure_stats = {s: np.full(num_sim, sim_sub_stat_initial) for s in stat_order}
+    simulated_pure_stats[d_stat] = np.full(num_sim, sim_main_stat_initial)
+
+    if upgrades > 0:
+        for stat_name in stat_order:
+            if stat_name == d_stat:
+                simulated_pure_stats[stat_name] += np.random.choice(sim_d_vals, (num_sim, upgrades), p=sim_d_probs).sum(axis=1)
+            else:
+                simulated_pure_stats[stat_name] += np.random.choice(sim_ac_vals, (num_sim, upgrades), p=sim_ac_probs).sum(axis=1)
+
+    total_sim_pure = np.zeros(num_sim)
+    for stat_name in stat_order:
+        if exclude_hp and stat_name == "체력":
+            continue
+        total_sim_pure += simulated_pure_stats[stat_name]
+    
+    return total_sim_pure, simulated_pure_stats
+# --- 변경 끝 ---
+
 # ---------- 입력 섹션 ----------
 
 # 펫 현재 정보 섹션
-with st.expander("\U0001F43E 펫 현재 정보 입력 (클릭하여 펼치기)", expanded=True): # expanded=True로 초기에는 열려 있게 설정
+with st.expander("\U0001F43E 펫 현재 정보 입력 (클릭하여 펼치기)", expanded=True):
+    # --- 변경 시작: 펫 종류 선택 추가 ---
+    pet_type = st.selectbox("펫 종류 선택", list(initial_stats_data.keys()), key="pet_type_select")
+    
+    # 선택된 펫 종류에 따라 초기 스탯 값 설정
+    current_pet_initial_stats = initial_stats_data[pet_type]
+    main_stat_initial_value = current_pet_initial_stats["main_stat"]
+    sub_stat_initial_value = current_pet_initial_stats["sub_stat"]
+    aggressiveness_initial_value = current_pet_initial_stats["aggressiveness"]
+    # --- 변경 끝 ---
+
     category = st.selectbox("\U0001F436 견종 선택", list(d_stat_map.keys()), key="breed_select")
     d_stat = d_stat_map[category] # Main stat
     remaining_stats = [s for s in stat_order if s != d_stat]
@@ -196,14 +259,17 @@ with st.expander("\U0001F43E 펫 현재 정보 입력 (클릭하여 펼치기)",
     col1, col2 = st.columns(2)
     level = col1.number_input("펫 레벨 (1 이상)", min_value=1, value=1, step=1, key="pet_level_input")
     input_stats = {}
-    input_stats[a_stat_name] = col1.number_input(f"{a_stat_name} 수치", min_value=0, value=base_stats_initial[a_stat_name], step=1, key=f"input_{a_stat_name}")
-    input_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 수치", min_value=0, value=base_stats_initial[b_stat_name], step=1, key=f"input_{b_stat_name}")
-    input_stats[c_stat_name] = col1.number_input(f"{c_stat_name} 수치", min_value=0, value=base_stats_initial[c_stat_name], step=1, key=f"input_{c_stat_name}")
-    input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial, step=1, key=f"input_{d_stat}")
-    input_stats["적극성"] = st.number_input(f"적극성 수치", min_value=3, value=base_stats_initial["적극성"], step=1, key="input_적극성")
+    
+    # --- 변경 시작: 초기 스탯 값 동적 적용 ---
+    input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial_value, step=1, key=f"input_{d_stat}")
+    input_stats[a_stat_name] = col1.number_input(f"{a_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{a_stat_name}")
+    input_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{b_stat_name}")
+    input_stats[c_stat_name] = col1.number_input(f"{c_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{c_stat_name}")
+    input_stats["적극성"] = st.number_input(f"적극성 수치", min_value=3, value=aggressiveness_initial_value, step=1, key="input_적극성")
+    # --- 변경 끝 ---
 
 # 펫 타운 시설 레벨 섹션
-with st.expander("\U0001F3D9️ 펫 타운 시설 레벨 (클릭하여 펼치기)", expanded=False): # 초기에는 닫혀 있게 설정
+with st.expander("\U0001F3D9️ 펫 타운 시설 레벨 (클릭하여 펼치기)", expanded=False):
     management_office_level = st.slider("관리소 레벨", min_value=0, max_value=20, value=0, step=1, key="mo_level")
     dormitory_level = st.slider("숙소 레벨", min_value=0, max_value=20, value=0, step=1, key="dorm_level")
     training_ground_level = st.slider("훈련장 레벨", min_value=0, max_value=20, value=0, step=1, key="train_level")
@@ -211,11 +277,11 @@ with st.expander("\U0001F3D9️ 펫 타운 시설 레벨 (클릭하여 펼치기
     fence_level = st.slider("울타리 레벨", min_value=0, max_value=20, value=0, step=1, key="fence_level")
 
 # 특기 섹션
-with st.expander("\U0001F3C1 특기 (클릭하여 펼치기)", expanded=False): # 초기에는 닫혀 있게 설정
+with st.expander("\U0001F3C1 특기 (클릭하여 펼치기)", expanded=False):
     st.markdown("---")
 
     def render_specialty_section(title, category_session_key, specialty_options, max_stage):
-        st.markdown(f"#### {title} 특기")
+        st.markdown(f"#### {title} Specialties") # 제목 영문화
         
         if f"{category_session_key}_add_select_idx" not in st.session_state:
             st.session_state[f"{category_session_key}_add_select_idx"] = 0
@@ -223,26 +289,26 @@ with st.expander("\U0001F3C1 특기 (클릭하여 펼치기)", expanded=False): 
         col_select, col_add = st.columns([0.7, 0.3])
         with col_select:
             selected_specialty_to_add = st.selectbox(
-                f"추가할 특기 선택", 
-                ["선택하세요"] + specialty_options, 
+                f"Select Specialty to Add", # 문구 영문화
+                ["Select"] + specialty_options, # 문구 영문화
                 key=f"{category_session_key}_add_select",
                 index=st.session_state[f"{category_session_key}_add_select_idx"]
             )
         with col_add:
             st.write("") 
-            if st.button(f"{title} 특기 추가", key=f"{category_session_key}_add_btn"):
-                if selected_specialty_to_add != "선택하세요":
+            if st.button(f"Add {title} Specialty", key=f"{category_session_key}_add_btn"): # 버튼 영문화
+                if selected_specialty_to_add != "Select": # 문구 영문화
                     st.session_state[category_session_key].append(
                         {"type": selected_specialty_to_add, "stage": 0, "id": pd.Timestamp.now().timestamp()}
                     )
                     st.session_state[f"{category_session_key}_add_select_idx"] = 0 
                     st.rerun() 
                 else:
-                    st.warning("추가할 특기를 선택해주세요.")
+                    st.warning("Please select a specialty to add.") # 경고 문구 영문화
 
         st.markdown("---")
         if not st.session_state[category_session_key]:
-            st.info("현재 추가된 특기가 없습니다.")
+            st.info("No specialties added yet.") # 문구 영문화
         
         specialties_to_keep = []
         for i, spec in enumerate(st.session_state[category_session_key]):
@@ -253,14 +319,14 @@ with st.expander("\U0001F3C1 특기 (클릭하여 펼치기)", expanded=False): 
                 st.write(f"**{spec['type']}**")
             with col_spec_stage:
                 current_stage = st.slider(
-                    f"{spec['type']} 단계", 
+                    f"{spec['type']} Stage", # 문구 영문화
                     min_value=0, max_value=max_stage, value=spec["stage"], 
                     key=f"{instance_key}_stage"
                 )
                 spec["stage"] = current_stage 
             with col_spec_delete:
                 st.write("") 
-                if st.button("삭제", key=f"{instance_key}_delete"): 
+                if st.button("Delete", key=f"{instance_key}_delete"): # 버튼 영문화
                     st.session_state[category_session_key].remove(spec) 
                     st.rerun() 
                 else:
@@ -270,31 +336,24 @@ with st.expander("\U0001F3C1 특기 (클릭하여 펼치기)", expanded=False): 
 
     # 노비스 특기 (4레벨 돌파)
     novice_specialty_types = [s for s in specialty_rewards_by_type_and_stage if s.startswith("노비스")]
-    render_specialty_section("노비스 (4레벨 돌파)", "novice_specialties", novice_specialty_types, 3) 
+    render_specialty_section("Novice (Level 4 Breakthrough)", "novice_specialties", novice_specialty_types, 3) # 제목 영문화
 
     st.markdown("---")
 
     # 비기너 특기 (9레벨 돌파)
     beginner_specialty_types = [s for s in specialty_rewards_by_type_and_stage if s.startswith("비기너")]
-    render_specialty_section("비기너 (9레벨 돌파)", "beginner_specialties", beginner_specialty_types, 4) 
+    render_specialty_section("Beginner (Level 9 Breakthrough)", "beginner_specialties", beginner_specialty_types, 4) # 제목 영문화
 
     st.markdown("---")
 
     # 레이즈 특기 (14레벨 돌파)
     raise_specialty_types = [s for s in specialty_rewards_by_type_and_stage if s.startswith("레이즈")]
-    render_specialty_section("레이즈 (14레벨 돌파)", "raise_specialties", raise_specialty_types, 5) 
+    render_specialty_section("Raise (Level 14 Breakthrough)", "raise_specialties", raise_specialty_types, 5) # 제목 영문화
 
-    st.markdown("---") # 여기에 st.markdown()을 추가하여 오류 수정.
-
-# ---------- 시뮬레이션용 상수 ----------
-num_sim = 100_000
-ac_vals = [0, 1, 2, 3] # 일반 스탯 증가량
-ac_probs = [0.15, 0.5, 0.3, 0.05]
-d_vals = [1, 2, 3, 4, 5, 6, 7] # 주 스탯 증가량
-d_probs = [0.05, 0.15, 0.3, 0.2, 0.15, 0.1, 0.05]
+    st.markdown("---")
 
 # ---------- 버튼 ----------
-if st.button("결과 계산", key="calculate_btn"):
+if st.button("Calculate Results", key="calculate_btn"): # 버튼 영문화
     st.session_state["calculated"] = True
 
 # ---------- 결과 표시 ----------
@@ -334,12 +393,16 @@ if st.session_state["calculated"]:
     # Calculate user's PURE stats (펫 타운 시설 스탯 및 특기 스탯 제외)
     user_pure_stats = {}
     for stat_name in all_stats_for_pure_calculation:
-        initial_base = base_stats_initial[stat_name]
+        # --- 변경 시작: 초기 스탯 값을 펫 종류에 따라 동적으로 가져오기 ---
+        initial_base_for_calc = current_pet_initial_stats["sub_stat"]
         if stat_name == d_stat: # 주 스탯
-            initial_base = main_stat_initial
+            initial_base_for_calc = current_pet_initial_stats["main_stat"]
+        if stat_name == "적극성": # 적극성 초기값
+            initial_base_for_calc = current_pet_initial_stats["aggressiveness"]
+        # --- 변경 끝 ---
         
         user_pure_stats[stat_name] = max(
-            initial_base, 
+            initial_base_for_calc,
             input_stats[stat_name] - total_facility_bonuses[stat_name] - total_specialty_bonuses[stat_name]
         )
     
@@ -349,108 +412,119 @@ if st.session_state["calculated"]:
             continue
         user_total_pure += user_pure_stats[stat_name]
 
-    # Calculate upgrades from pet level
     upgrades = level - 1 # Level 1 means 0 upgrades, Level 2 means 1 upgrade etc.
 
-    # Simulate random level-up stats (starting from initial base stats)
-    simulated_pure_stats = {s: np.full(num_sim, base_stats_initial[s]) for s in stat_order}
-    simulated_pure_stats[d_stat] = np.full(num_sim, main_stat_initial)
+    # --- 변경 시작: 현재 선택된 펫 타입에 대한 시뮬레이션 실행 ---
+    current_pet_total_sim_pure, current_pet_simulated_pure_stats = run_simulation(
+        pet_type, user_pure_stats, upgrades, exclude_hp, d_stat, num_sim
+    )
+    # --- 변경 끝 ---
 
-    if upgrades > 0:
-        for stat_name in stat_order:
-            if stat_name == d_stat:
-                simulated_pure_stats[stat_name] += np.random.choice(d_vals, (num_sim, upgrades), p=d_probs).sum(axis=1)
-            else:
-                simulated_pure_stats[stat_name] += np.random.choice(ac_vals, (num_sim, upgrades), p=ac_probs).sum(axis=1)
+    total_percentile = np.sum(current_pet_total_sim_pure > user_total_pure) / num_sim * 100
 
-    # Calculate total simulated PURE stats for percentile comparison
-    total_sim_pure = np.zeros(num_sim)
-    for stat_name in stat_order: # 적극성은 총합 계산에 포함 안됨
-        if exclude_hp and stat_name == "체력":
-            continue
-        total_sim_pure += simulated_pure_stats[stat_name]
-
-    total_percentile = np.sum(total_sim_pure > user_total_pure) / num_sim * 100
-
-    # Individual stat percentiles (for user's PURE stats vs simulated PURE stats)
     individual_percentiles = {}
     for stat_name in stat_order:
-        individual_percentiles[stat_name] = np.sum(simulated_pure_stats[stat_name] > user_pure_stats[stat_name]) / num_sim * 100
+        # --- 변경 시작: 현재 펫 타입의 초기 스탯을 기준으로 증가량 계산 ---
+        initial_base_for_avg_calc = current_pet_initial_stats["main_stat"] if stat_name == d_stat else current_pet_initial_stats["sub_stat"]
+        individual_percentiles[stat_name] = np.sum(current_pet_simulated_pure_stats[stat_name] > user_pure_stats[stat_name]) / num_sim * 100
+        # --- 변경 끝 ---
     
-    # Calculate average increase per level (based on user's PURE stats)
     avg_increases = {}
     for stat_name in stat_order:
-        initial_base = main_stat_initial if stat_name == d_stat else base_stats_initial[stat_name]
-        avg_increases[stat_name] = (user_pure_stats[stat_name] - initial_base) / upgrades if upgrades > 0 else 0
+        initial_base_for_avg = current_pet_initial_stats["main_stat"] if stat_name == d_stat else current_pet_initial_stats["sub_stat"]
+        avg_increases[stat_name] = (user_pure_stats[stat_name] - initial_base_for_avg) / upgrades if upgrades > 0 else 0
 
-    st.success(f"\U0001F4CC 총합 (펫 타운 및 특기 제외 순수 스탯): {user_total_pure}")
-    st.info(f"\U0001F4A1 {'체력 제외 시 ' if exclude_hp else ''}상위 약 {total_percentile:.2f}% 에 해당합니다.")
-    st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 펫 레벨: **{level}**")
+    st.success(f"\U0001F4CC Total Pure Stats (Excluding Town/Specialty Bonuses): {user_total_pure}") # 문구 영문화
+    st.info(f"\U0001F4A1 Your pet is in the top {total_percentile:.2f}% of **{pet_type}** pets{', excluding HP' if exclude_hp else ''}.") # 문구 영문화
+    st.markdown(f"### \U0001F43E Selected Breed: **{category}** / Pet Level: **{level}** / Pet Type: **{pet_type}**") # 문구 및 타입 추가 영문화
+
+    # --- 변경 시작: 교차 비교 백분율 계산 및 표시 ---
+    other_pet_type = "심연 펫" if pet_type == "일반 펫" else "일반 펫"
+    
+    # 다른 펫 타입의 시뮬레이션 데이터 생성
+    other_pet_total_sim_pure, _ = run_simulation(
+        other_pet_type, user_pure_stats, upgrades, exclude_hp, d_stat, num_sim
+    )
+    
+    cross_percentile = np.sum(other_pet_total_sim_pure > user_total_pure) / num_sim * 100
+    st.info(f"\U0001F504 Your pet is in the top {cross_percentile:.2f}% when compared to **{other_pet_type}** pets{', excluding HP' if exclude_hp else ''}.") # 문구 영문화
+    st.markdown("---")
+    # --- 변경 끝 ---
 
     # Display individual stats including facility bonuses
     df_data = {
-        "스탯": [],
-        "입력 수치 (펫 타운/특기 포함)": [],
-        "순수 펫 스탯 (펫 타운/특기 제외)": [],
-        "펫 타운으로 인한 증가량": [],
-        "특기로 인한 증가량": [],
-        "상위 % (순수 스탯 기준)": [],
-        "펫 레벨당 평균 증가량 (시설물/특기 제외)": []
+        "Stat": [], # 헤더 영문화
+        "Input Value (Incl. Town/Specialty)": [], # 헤더 영문화
+        "Pure Pet Stat (Excl. Town/Specialty)": [], # 헤더 영문화
+        "Bonus from Pet Town": [], # 헤더 영문화
+        "Bonus from Specialty": [], # 헤더 영문화
+        "Top % (Pure Stat Basis)": [], # 헤더 영문화
+        "Avg. Increase per Level (Excl. Town/Specialty)": [] # 헤더 영문화
     }
 
     for stat_name in stat_order: # 적극성은 총합 계산에 포함 안됨
-        df_data["스탯"].append(stat_name)
-        df_data["입력 수치 (펫 타운/특기 포함)"].append(input_stats[stat_name])
-        df_data["순수 펫 스탯 (펫 타운/특기 제외)"].append(user_pure_stats[stat_name])
-        df_data["펫 타운으로 인한 증가량"].append(total_facility_bonuses[stat_name])
-        df_data["특기로 인한 증가량"].append(total_specialty_bonuses[stat_name])
-        df_data["상위 % (순수 스탯 기준)"].append(f"{individual_percentiles[stat_name]:.2f}%")
-        df_data["펫 레벨당 평균 증가량 (시설물/특기 제외)"].append(f"+{avg_increases[stat_name]:.2f}")
+        df_data["Stat"].append(stat_name)
+        df_data["Input Value (Incl. Town/Specialty)"].append(input_stats[stat_name])
+        df_data["Pure Pet Stat (Excl. Town/Specialty)"].append(user_pure_stats[stat_name])
+        df_data["Bonus from Pet Town"].append(total_facility_bonuses[stat_name])
+        df_data["Bonus from Specialty"].append(total_specialty_bonuses[stat_name])
+        df_data["Top % (Pure Stat Basis)"].append(f"{individual_percentiles[stat_name]:.2f}%")
+        df_data["Avg. Increase per Level (Excl. Town/Specialty)"].append(f"+{avg_increases[stat_name]:.2f}")
 
     # 적극성 스탯 별도 추가
-    df_data["스탯"].append("적극성")
-    df_data["입력 수치 (펫 타운/특기 포함)"].append(input_stats["적극성"])
-    df_data["순수 펫 스탯 (펫 타운/특기 제외)"].append(user_pure_stats["적극성"])
-    df_data["펫 타운으로 인한 증가량"].append(total_facility_bonuses["적극성"])
-    df_data["특기로 인한 증가량"].append(total_specialty_bonuses["적극성"])
-    df_data["상위 % (순수 스탯 기준)"].append("N/A") # 적극성은 시뮬레이션되지 않으므로 N/A
-    df_data["펫 레벨당 평균 증가량 (시설물/특기 제외)"].append("N/A") # 적극성은 레벨업으로 증가하지 않음
+    df_data["Stat"].append("적극성")
+    df_data["Input Value (Incl. Town/Specialty)"].append(input_stats["적극성"])
+    df_data["Pure Pet Stat (Excl. Town/Specialty)"].append(user_pure_stats["적극성"])
+    df_data["Bonus from Pet Town"].append(total_facility_bonuses["적극성"])
+    df_data["Bonus from Specialty"].append(total_specialty_bonuses["적극성"])
+    df_data["Top % (Pure Stat Basis)"].append("N/A")
+    df_data["Avg. Increase per Level (Excl. Town/Specialty)"].append("N/A")
 
     df = pd.DataFrame(df_data)
     st.table(df)
 
     fig, ax = plt.subplots(figsize=(10, 4))
-    sns.histplot(total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
+    sns.histplot(current_pet_total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
     ax.axvline(user_total_pure, color='red', linestyle='--', label='Your Pet Pure Total Stats')
-    ax.set_title(f"Overall Stat Distribution (Pure Pet Stats){' (Excluding HP)' if exclude_hp else ''}") 
-    ax.set_xlabel("Total Stats") 
+    ax.set_title(f"Overall Stat Distribution ({pet_type} - Pure Pet Stats){' (Excluding HP)' if exclude_hp else ''}") # 제목에 펫 타입 추가
+    ax.set_xlabel("Total Stats")
     ax.legend()
     st.pyplot(fig)
 
-    st.markdown("---") # 여기에 st.markdown()을 추가하여 오류 수정.
-    st.subheader("목표 스탯 입력 (20레벨 달성 시점의 총 스탯)") # subheader도 expander 밖으로 이동
-    calc_goal = st.checkbox("\U0001F3AF 20레벨 목표 스탯 도달 확률 보기", key="calc_goal_checkbox")
+    st.markdown("---")
+    st.subheader("Target Stats Input (Total Stats at Level 20)") # 제목 영문화
+    calc_goal = st.checkbox("\U0001F3AF View Probability to Reach Level 20 Target Stats", key="calc_goal_checkbox") # 문구 영문화
 
     if calc_goal:
         target_stats = {}
         col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-        target_stats[a_stat_name] = col_t1.number_input(f"{a_stat_name} 목표값", min_value=0, value=35, step=1, key=f"target_{a_stat_name}")
-        target_stats[b_stat_name] = col_t2.number_input(f"{b_stat_name} 목표값", min_value=0, value=35, step=1, key=f"target_{b_stat_name}")
-        target_stats[c_stat_name] = col_t3.number_input(f"{c_stat_name} 목표값", min_value=0, value=35, step=1, key=f"target_{c_stat_name}")
-        target_stats[d_stat] = col_t4.number_input(f"{d_stat} 목표값 (주 스탯)", min_value=0, value=100, step=1, key=f"target_{d_stat}")
+        target_stats[a_stat_name] = col_t1.number_input(f"{a_stat_name} Target", min_value=0, value=35, step=1, key=f"target_{a_stat_name}") # 문구 영문화
+        target_stats[b_stat_name] = col_t2.number_input(f"{b_stat_name} Target", min_value=0, value=35, step=1, key=f"target_{b_stat_name}") # 문구 영문화
+        target_stats[c_stat_name] = col_t3.number_input(f"{c_stat_name} Target", min_value=0, value=35, step=1, key=f"target_{c_stat_name}") # 문구 영문화
+        target_stats[d_stat] = col_t4.number_input(f"{d_stat} Target (Main Stat)", min_value=0, value=100, step=1, key=f"target_{d_stat}") # 문구 영문화
         
         remaining_upgrades_to_20 = 20 - level if level < 20 else 0
 
-        sim_pure_at_20 = {s: np.full(num_sim, base_stats_initial[s]) for s in stat_order}
-        sim_pure_at_20[d_stat] = np.full(num_sim, main_stat_initial)
+        # --- 변경 시작: 목표 스탯 계산 시에도 현재 펫 타입의 초기 스탯 및 확률 적용 ---
+        sim_pure_at_20_data = initial_stats_data[pet_type]
+        sim_pure_at_20_main_stat_initial = sim_pure_at_20_data["main_stat"]
+        sim_pure_at_20_sub_stat_initial = sim_pure_at_20_data["sub_stat"]
+        sim_pure_at_20_ac_vals = sim_pure_at_20_data["ac_vals"]
+        sim_pure_at_20_ac_probs = sim_pure_at_20_data["ac_probs"]
+        sim_pure_at_20_d_vals = sim_pure_at_20_data["d_vals"]
+        sim_pure_at_20_d_probs = sim_pure_at_20_data["d_probs"]
+
+        sim_pure_at_20 = {s: np.full(num_sim, sim_pure_at_20_sub_stat_initial) for s in stat_order}
+        sim_pure_at_20[d_stat] = np.full(num_sim, sim_pure_at_20_main_stat_initial)
 
         for stat_name in stat_order:
             sim_pure_at_20[stat_name] = np.full(num_sim, user_pure_stats[stat_name]) 
             if remaining_upgrades_to_20 > 0:
                 if stat_name == d_stat:
-                    sim_pure_at_20[stat_name] += np.random.choice(d_vals, (num_sim, remaining_upgrades_to_20), p=d_probs).sum(axis=1)
+                    sim_pure_at_20[stat_name] += np.random.choice(sim_pure_at_20_d_vals, (num_sim, remaining_upgrades_to_20), p=sim_pure_at_20_d_probs).sum(axis=1)
                 else:
-                    sim_pure_at_20[stat_name] += np.random.choice(ac_vals, (num_sim, remaining_upgrades_to_20), p=ac_probs).sum(axis=1)
+                    sim_pure_at_20[stat_name] += np.random.choice(sim_pure_at_20_ac_vals, (num_sim, remaining_upgrades_to_20), p=sim_pure_at_20_ac_probs).sum(axis=1)
+        # --- 변경 끝 ---
 
         sim_final_at_20 = {}
         for stat_name in stat_order: 
@@ -466,8 +540,8 @@ if st.session_state["calculated"]:
         
         p_all = np.mean(all_conditions) * 100
 
-        st.write(f"\U0001F539 {a_stat_name} 목표 도달 확률: **{probabilities[a_stat_name]:.2f}%**")
-        st.write(f"\U0001F539 {b_stat_name} 목표 도달 확률: **{probabilities[b_stat_name]:.2f}%**")
-        st.write(f"\U0001F539 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
-        st.write(f"\U0001F539 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
-        st.success(f"\U0001F3C6 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
+        st.write(f"\U0001F539 Probability to reach {a_stat_name} target: **{probabilities[a_stat_name]:.2f}%**") # 문구 영문화
+        st.write(f"\U0001F539 Probability to reach {b_stat_name} target: **{probabilities[b_stat_name]:.2f}%**") # 문구 영문화
+        st.write(f"\U0001F539 Probability to reach {c_stat_name} target: **{probabilities[c_stat_name]:.2f}%**") # 문구 영문화
+        st.write(f"\U0001F539 Probability to reach {d_stat} (Main Stat) target: **{probabilities[d_stat]:.2f}%**") # 문구 영문화
+        st.success(f"\U0001F3C6 Probability to satisfy all targets simultaneously: **{p_all:.2f}%**") # 문구 영문화
