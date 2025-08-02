@@ -372,7 +372,7 @@ if st.session_state["calculated"]:
         bonuses = calculate_accumulated_facility_stats(facility_name, current_level)
         for stat, value in bonuses.items():
             if stat in total_facility_bonuses:
-                stats_to_sum[stat] += value
+                total_facility_bonuses[stat] += value # 이 부분 수정: stats_to_sum 대신 total_facility_bonuses 사용
 
     # Calculate total specialty bonuses from ALL added specialties
     total_specialty_bonuses = {stat: 0 for stat in all_stats_for_pure_calculation}
