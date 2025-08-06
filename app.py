@@ -11,7 +11,7 @@ import pandas as pd
 plt.rcParams['axes.unicode_minus'] = False # 마이너스 부호 깨짐 방지 (이 부분은 유지)
 
 st.set_page_config(page_title="펫 스탯 시뮬레이터", layout="centered")
-st.title("\U0001F4CA펫 스탯 시뮬레이터")
+st.title("🐾 펫 스탯 시뮬레이터")
 st.markdown("""
 레벨과 스탯 수치를 입력하면, 당신의 총합이 상위 몇 %인지 계산합니다.
 주 스탯을 포함한 **인내력, 충성심, 속도, 체력** 기준입니다.
@@ -235,7 +235,7 @@ def run_simulation(pet_type_key, upgrades, exclude_hp, d_stat, num_sim):
 # ---------- 입력 섹션 ----------
 
 # 펫 현재 정보 섹션
-with st.expander("\U0001F43E 펫 현재 정보 입력 (클릭하여 펼치기)", expanded=True):
+with st.expander("🐶 펫 현재 정보 입력 (클릭하여 펼치기)", expanded=True):
     # --- 펫 종류 선택 추가 ---
     pet_type = st.selectbox("펫 종류 선택", list(initial_stats_data.keys()), key="pet_type_select")
     
@@ -245,14 +245,14 @@ with st.expander("\U0001F43E 펫 현재 정보 입력 (클릭하여 펼치기)",
     sub_stat_initial_value = current_pet_initial_stats["sub_stat"]
     aggressiveness_initial_value = current_pet_initial_stats["aggressiveness"]
 
-    category = st.selectbox("\U0001F436 견종 선택", list(d_stat_map.keys()), key="breed_select")
+    category = st.selectbox("🐕 견종 선택", list(d_stat_map.keys()), key="breed_select")
     d_stat = d_stat_map[category] # Main stat
     remaining_stats = [s for s in stat_order if s != d_stat]
     a_stat_name = remaining_stats[0]
     b_stat_name = remaining_stats[1]
     c_stat_name = remaining_stats[2]
 
-    exclude_hp = st.checkbox("\U0001F6D1 체력 스탯 제외하고 계산하기", key="exclude_hp_checkbox")
+    exclude_hp = st.checkbox("🚫 체력 스탯 제외하고 계산하기", key="exclude_hp_checkbox")
 
     st.markdown("펫 스탯창에 표시되는 수치 그대로 입력해 주세요.")
     col1, col2 = st.columns(2)
@@ -267,7 +267,7 @@ with st.expander("\U0001F43E 펫 현재 정보 입력 (클릭하여 펼치기)",
     input_stats["적극성"] = st.number_input(f"적극성 수치", min_value=3, value=aggressiveness_initial_value, step=1, key="input_적극성")
 
 # 펫 타운 시설 레벨 섹션
-with st.expander("\U0001F3D9️ 펫 타운 시설 레벨 (클릭하여 펼치기)", expanded=False):
+with st.expander("🏠 펫 타운 시설 레벨 (클릭하여 펼치기)", expanded=False):
     management_office_level = st.slider("관리소 레벨", min_value=0, max_value=20, value=0, step=1, key="mo_level")
     dormitory_level = st.slider("숙소 레벨", min_value=0, max_value=20, value=0, step=1, key="dorm_level")
     training_ground_level = st.slider("훈련장 레벨", min_value=0, max_value=20, value=0, step=1, key="train_level")
@@ -275,7 +275,7 @@ with st.expander("\U0001F3D9️ 펫 타운 시설 레벨 (클릭하여 펼치기
     fence_level = st.slider("울타리 레벨", min_value=0, max_value=20, value=0, step=1, key="fence_level")
 
 # 특기 섹션
-with st.expander("\U0001F3C1 특기 (클릭하여 펼치기)", expanded=False):
+with st.expander("🏆 특기 (클릭하여 펼치기)", expanded=False):
     st.markdown("---")
 
     def render_specialty_section(title, category_session_key, specialty_options, max_stage):
@@ -430,8 +430,8 @@ if st.session_state["calculated"]:
         initial_base_for_avg = current_pet_initial_stats["main_stat"] if stat_name == d_stat else current_pet_initial_stats["sub_stat"]
         avg_increases[stat_name] = (user_pure_stats[stat_name] - initial_base_for_avg) / upgrades if upgrades > 0 else 0
 
-    st.success(f"\U0001F4CC 총합 (펫 타운 및 특기 제외 순수 스탯): {user_total_pure}")
-    st.info(f"\U0001F4A1 당신의 펫은 **{pet_type}** 펫 중 {'체력 제외 시 ' if exclude_hp else ''}상위 약 **{total_percentile:.2f}%** 에 해당합니다.")
+    st.success(f"📈 총합 (펫 타운 및 특기 제외 순수 스탯): {user_total_pure}")
+    st.info(f"💡 당신의 펫은 **{pet_type}** 펫 중 {'체력 제외 시 ' if exclude_hp else ''}상위 약 **{total_percentile:.2f}%** 에 해당합니다.")
 
     # --- 교차 비교 백분율 계산 및 표시 ---
     other_pet_type = "심연 펫" if pet_type == "일반 펫" else "일반 펫"
@@ -442,10 +442,10 @@ if st.session_state["calculated"]:
     )
     
     cross_percentile = np.sum(other_pet_total_sim_pure > user_total_pure) / num_sim * 100
-    st.info(f"\U0001F504 당신의 펫은 **{other_pet_type}** 펫과 비교 시 {'체력 제외 시 ' if exclude_hp else ''}상위 약 **{cross_percentile:.2f}%** 에 해당합니다.")
+    st.info(f"🔄 당신의 펫은 **{other_pet_type}** 펫과 비교 시 {'체력 제외 시 ' if exclude_hp else ''}상위 약 **{cross_percentile:.2f}%** 에 해당합니다.")
     st.markdown("---")
     
-    st.markdown(f"### \U0001F43E 선택한 견종: **{category}** / 펫 레벨: **{level}** / 펫 종류: **{pet_type}**")
+    st.markdown(f"### 🐾 선택한 견종: **{category}** / 펫 레벨: **{level}** / 펫 종류: **{pet_type}**")
 
     # Display individual stats including facility bonuses
     df_data = {
@@ -465,7 +465,8 @@ if st.session_state["calculated"]:
         df_data["펫 타운으로 인한 증가량"].append(total_facility_bonuses[stat_name])
         df_data["특기로 인한 증가량"].append(total_specialty_bonuses[stat_name])
         df_data["상위 % (순수 스탯 기준)"].append(f"{individual_percentiles[stat_name]:.2f}%")
-        df_data["펫 레벨당 평균 증가량 (시설물/특기 제외)"].append(f"+{avg_increases[stat_name]:.2f}")
+        avg_increase = f"+{avg_increases[stat_name]:.2f}" if upgrades > 0 else "N/A"
+        df_data["펫 레벨당 평균 증가량 (시설물/특기 제외)"].append(avg_increase)
 
     # 적극성 스탯 별도 추가
     df_data["스탯"].append("적극성")
@@ -490,7 +491,7 @@ if st.session_state["calculated"]:
 
     st.markdown("---")
     st.subheader("목표 스탯 입력 (20레벨 달성 시점의 총 스탯)")
-    calc_goal = st.checkbox("\U0001F3AF 20레벨 목표 스탯 도달 확률 보기", key="calc_goal_checkbox")
+    calc_goal = st.checkbox("🎯 20레벨 목표 스탯 도달 확률 보기", key="calc_goal_checkbox")
 
     if calc_goal:
         target_stats = {}
@@ -537,8 +538,8 @@ if st.session_state["calculated"]:
         
         p_all = np.mean(all_conditions) * 100
 
-        st.write(f"\U0001F539 {a_stat_name} 목표 도달 확률: **{probabilities[a_stat_name]:.2f}%**")
-        st.write(f"\U0001F539 {b_stat_name} 목표 도달 확률: **{probabilities[b_stat_name]:.2f}%**")
-        st.write(f"\U0001F539 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
-        st.write(f"\U0001F539 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
-        st.success(f"\U0001F3C6 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
+        st.write(f"🔹 {a_stat_name} 목표 도달 확률: **{probabilities[a_stat_name]:.2f}%**")
+        st.write(f"🔹 {b_stat_name} 목표 도달 확률: **{probabilities[b_stat_name]:.2f}%**")
+        st.write(f"🔹 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
+        st.write(f"🔹 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
+        st.success(f"🎉 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
