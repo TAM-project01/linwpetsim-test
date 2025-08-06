@@ -25,7 +25,6 @@ st.markdown("""
 
 # ---------- 커스텀 CSS 스타일 적용 ----------
 st.markdown(
-    """
     <style>
     /* 전체 페이지 배경색 및 기본 폰트 설정 (선택 사항) */
     body {
@@ -542,3 +541,4 @@ if st.session_state["calculated"]:
         st.write(f"\U0001F539 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
         st.write(f"\U0001F539 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
         st.success(f"\U0001F3C6 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
+
