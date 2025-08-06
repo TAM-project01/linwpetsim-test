@@ -237,10 +237,13 @@ def run_simulation(pet_type_key, upgrades, exclude_hp, d_stat, num_sim):
 # 펫 현재 정보 섹션
 with st.expander("🐶 펫 현재 정보 입력 (클릭하여 펼치기)", expanded=True):
     # --- 펫 종류 선택 추가 ---
-    pet_type = st.selectbox("펫 종류 선택", list(initial_stats_data.keys()), key="pet_type_select")
+    pet_type_korean = st.selectbox("펫 종류 선택", list(initial_stats_data.keys()), key="pet_type_select")
+    
+    # 펫 종류 변수를 영어로 변환하여 그래프에 사용
+    pet_type_english = "Normal Pet" if pet_type_korean == "일반 펫" else "Abyss Pet"
     
     # 선택된 펫 종류에 따라 초기 스탯 값 설정
-    current_pet_initial_stats = initial_stats_data[pet_type]
+    current_pet_initial_stats = initial_stats_data[pet_type_korean]
     main_stat_initial_value = current_pet_initial_stats["main_stat"]
     sub_stat_initial_value = current_pet_initial_stats["sub_stat"]
     aggressiveness_initial_value = current_pet_initial_stats["aggressiveness"]
@@ -416,7 +419,7 @@ if st.session_state["calculated"]:
 
     # 현재 선택된 펫 타입에 대한 시뮬레이션 실행
     current_pet_total_sim_pure, current_pet_simulated_pure_stats = run_simulation(
-        pet_type, upgrades, exclude_hp, d_stat, num_sim
+        pet_type_korean, upgrades, exclude_hp, d_stat, num_sim
     )
 
     total_percentile = np.sum(current_pet_total_sim_pure > user_total_pure) / num_sim * 100
@@ -431,10 +434,10 @@ if st.session_state["calculated"]:
         avg_increases[stat_name] = (user_pure_stats[stat_name] - initial_base_for_avg) / upgrades if upgrades > 0 else 0
 
     st.success(f"📈 총합 (펫 타운 및 특기 제외 순수 스탯): {user_total_pure}")
-    st.info(f"💡 당신의 펫은 **{pet_type}** 펫 중 {'체력 제외 시 ' if exclude_hp else ''}상위 약 **{total_percentile:.2f}%** 에 해당합니다.")
+    st.info(f"💡 당신의 펫은 **{pet_type_korean}** 펫 중 {'체력 제외 시 ' if exclude_hp else ''}상위 약 **{total_percentile:.2f}%** 에 해당합니다.")
 
     # --- 교차 비교 백분율 계산 및 표시 ---
-    other_pet_type = "심연 펫" if pet_type == "일반 펫" else "일반 펫"
+    other_pet_type = "심연 펫" if pet_type_korean == "일반 펫" else "일반 펫"
     
     # 다른 펫 타입의 시뮬레이션 데이터 생성
     other_pet_total_sim_pure, _ = run_simulation(
@@ -445,7 +448,7 @@ if st.session_state["calculated"]:
     st.info(f"🔄 당신의 펫은 **{other_pet_type}** 펫과 비교 시 {'체력 제외 시 ' if exclude_hp else ''}상위 약 **{cross_percentile:.2f}%** 에 해당합니다.")
     st.markdown("---")
     
-    st.markdown(f"### 🐾 선택한 견종: **{category}** / 펫 레벨: **{level}** / 펫 종류: **{pet_type}**")
+    st.markdown(f"### 🐾 선택한 견종: **{category}** / 펫 레벨: **{level}** / 펫 종류: **{pet_type_korean}**")
 
     # Display individual stats including facility bonuses
     df_data = {
@@ -480,11 +483,11 @@ if st.session_state["calculated"]:
     df = pd.DataFrame(df_data)
     st.table(df)
 
-    # 그래프 관련 텍스트를 모두 영어로 변경
+    # 그래프 관련 텍스트를 모두 영어로 변경 (pet_type도 영어 변수 사용)
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(current_pet_total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
     ax.axvline(user_total_pure, color='red', linestyle='--', label="Your Pet's Total Pure Stat")
-    ax.set_title(f"Total Stat Distribution ({pet_type} - Pure Stats){' (Excluding HP)' if exclude_hp else ''}")
+    ax.set_title(f"Total Stat Distribution ({pet_type_english} - Pure Stats){' (Excluding HP)' if exclude_hp else ''}")
     ax.set_xlabel("Total Stat")
     ax.legend()
     st.pyplot(fig)
@@ -504,7 +507,7 @@ if st.session_state["calculated"]:
         remaining_upgrades_to_20 = 20 - level if level < 20 else 0
 
         # 목표 스탯 계산 시에도 현재 펫 타입의 초기 스탯 및 확률 적용
-        sim_at_20_data = initial_stats_data[pet_type]
+        sim_at_20_data = initial_stats_data[pet_type_korean]
         sim_at_20_main_stat_initial = sim_at_20_data["main_stat"]
         sim_at_20_sub_stat_initial = sim_at_20_data["sub_stat"]
         sim_at_20_ac_vals = sim_at_20_data["ac_vals"]
