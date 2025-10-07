@@ -239,7 +239,16 @@ with st.expander("🐶 펫 현재 정보 입력 (클릭하여 펼치기)", expan
     # 펫 스탯 입력
     st.markdown("펫 스탯창에 표시되는 수치 그대로 입력해 주세요.")
     col1, col2 = st.columns(2)
-    
+
+    # level 입력값이 안전하게 정의되어 있는지 확인
+try:
+    level_value = int(level) if level is not None else 1
+except:
+    level_value = 1
+
+# 업그레이드 횟수 계산 (1레벨이면 0)
+upgrades = max(level_value - 1, 0)
+  
     input_stats = {}
     input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=st.session_state[f"input_{d_stat}"], step=1, key=f"input_{d_stat}")
     input_stats[remaining_stats[0]] = col1.number_input(f"{remaining_stats[0]} 수치", min_value=0, value=st.session_state[f"input_{remaining_stats[0]}"], step=1, key=f"input_{remaining_stats[0]}")
@@ -502,5 +511,6 @@ if st.session_state["calculated"]:
         st.write(f"🔹 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
         st.write(f"🔹 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
         st.success(f"🎉 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
+
 
 
