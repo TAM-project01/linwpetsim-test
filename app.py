@@ -203,31 +203,39 @@ def run_simulation(pet_type_key, upgrades, exclude_hp, d_stat, num_sim):
 
 with st.expander("🐶 펫 현재 정보 입력 (클릭하여 펼치기)", expanded=True):
     pet_type_korean = st.selectbox("펫 종류 선택", list(initial_stats_data.keys()), key="pet_type_select")
-    pet_type_english = "Normal Pet" if pet_type_korean == "일반 펫" else "Abyss Pet"
+
+    # 선택한 펫 종류에 맞는 초기 스탯 불러오기
     current_pet_initial_stats = initial_stats_data[pet_type_korean]
     main_stat_initial_value = current_pet_initial_stats["main_stat"]
     sub_stat_initial_value = current_pet_initial_stats["sub_stat"]
     aggressiveness_initial_value = current_pet_initial_stats["aggressiveness"]
 
+    # 여기서부터 세션 상태 초기화 코드
+    for stat_name, value in zip(
+        [d_stat_map.get(category, "충성심"), *[s for s in stat_order if s != d_stat_map.get(category, "충성심")], "적극성"],
+        [main_stat_initial_value, sub_stat_initial_value, sub_stat_initial_value, sub_stat_initial_value, aggressiveness_initial_value]
+    ):
+        if f"input_{stat_name}" not in st.session_state or st.session_state.get("last_pet_type") != pet_type_korean:
+            st.session_state[f"input_{stat_name}"] = value
+    st.session_state["last_pet_type"] = pet_type_korean
+
     category = st.selectbox("🐕 견종 선택", list(d_stat_map.keys()), key="breed_select")
     d_stat = d_stat_map[category]
     remaining_stats = [s for s in stat_order if s != d_stat]
-    a_stat_name = remaining_stats[0]
-    b_stat_name = remaining_stats[1]
-    c_stat_name = remaining_stats[2]
+    a_stat_name, b_stat_name, c_stat_name = remaining_stats
 
     exclude_hp = st.checkbox("🚫 체력 스탯 제외하고 계산하기", key="exclude_hp_checkbox")
 
     st.markdown("펫 스탯창에 표시되는 수치 그대로 입력해 주세요.")
     col1, col2 = st.columns(2)
     level = col1.number_input("펫 레벨 (1 이상)", min_value=1, value=1, step=1, key="pet_level_input")
+
     input_stats = {}
-    
-    input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=main_stat_initial_value, step=1, key=f"input_{d_stat}")
-    input_stats[a_stat_name] = col1.number_input(f"{a_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{a_stat_name}")
-    input_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{b_stat_name}")
-    input_stats[c_stat_name] = col1.number_input(f"{c_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{c_stat_name}")
-    input_stats["적극성"] = st.number_input(f"적극성 수치", min_value=3, value=aggressiveness_initial_value, step=1, key="input_적극성")
+    input_stats[d_stat] = col2.number_input(f"{d_stat} 수치", min_value=0, value=st.session_state[f"input_{d_stat}"], step=1, key=f"input_{d_stat}")
+    input_stats[a_stat_name] = col1.number_input(f"{a_stat_name} 수치", min_value=0, value=st.session_state[f"input_{a_stat_name}"], step=1, key=f"input_{a_stat_name}")
+    input_stats[b_stat_name] = col2.number_input(f"{b_stat_name} 수치", min_value=0, value=st.session_state[f"input_{b_stat_name}"], step=1, key=f"input_{b_stat_name}")
+    input_stats[c_stat_name] = col1.number_input(f"{c_stat_name} 수치", min_value=0, value=st.session_state[f"input_{c_stat_name}"], step=1, key=f"input_{c_stat_name}")
+    input_stats["적극성"] = st.number_input(f"적극성 수치", min_value=3, value=st.session_state[f"input_적극성"], step=1, key="input_적극성")
 
 with st.expander("🏠 펫 타운 시설 레벨 (클릭하여 펼치기)", expanded=False):
     management_office_level = st.slider("관리소 레벨", min_value=0, max_value=20, value=0, step=1, key="mo_level")
@@ -484,3 +492,4 @@ if st.session_state["calculated"]:
         st.write(f"🔹 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
         st.write(f"🔹 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
         st.success(f"🎉 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
+
