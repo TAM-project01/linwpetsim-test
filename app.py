@@ -236,20 +236,21 @@ with st.expander("🐶 펫 현재 정보 입력 (클릭하여 펼치기)", expan
     )
 
     input_stats = {}
+    # ❗ FIX 1: Add pet_type_korean to the key to make it unique
     input_stats[d_stat] = col2.number_input(
-        f"{d_stat} 수치", min_value=0, value=main_stat_initial_value, step=1, key=f"input_{d_stat}"
+        f"{d_stat} 수치", min_value=0, value=main_stat_initial_value, step=1, key=f"input_{pet_type_korean}_{d_stat}"
     )
     input_stats[a_stat_name] = col1.number_input(
-        f"{a_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{a_stat_name}"
+        f"{a_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{pet_type_korean}_{a_stat_name}"
     )
     input_stats[b_stat_name] = col2.number_input(
-        f"{b_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{b_stat_name}"
+        f"{b_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{pet_type_korean}_{b_stat_name}"
     )
     input_stats[c_stat_name] = col1.number_input(
-        f"{c_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{c_stat_name}"
+        f"{c_stat_name} 수치", min_value=0, value=sub_stat_initial_value, step=1, key=f"input_{pet_type_korean}_{c_stat_name}"
     )
     input_stats["적극성"] = st.number_input(
-        f"적극성 수치", min_value=3, value=aggressiveness_initial_value, step=1, key="input_적극성"
+        f"적극성 수치", min_value=3, value=aggressiveness_initial_value, step=1, key=f"input_{pet_type_korean}_적극성"
     )
 
 with st.expander("🏠 펫 타운 시설 레벨 (클릭하여 펼치기)", expanded=False):
@@ -450,7 +451,8 @@ if st.session_state["calculated"]:
     fig, ax = plt.subplots(figsize=(10, 4))
     sns.histplot(current_pet_total_sim_pure, bins=50, kde=True, ax=ax, color='skyblue')
     ax.axvline(user_total_pure, color='red', linestyle='--', label="Your Pet's Total Pure Stat")
-    ax.set_title(f"Total Stat Distribution ({pet_type_english} - Pure Stats){' (Excluding HP)' if exclude_hp else ''}")
+    # ❗ FIX 2: Replace undefined 'pet_type_english' with 'pet_type_korean'
+    ax.set_title(f"Total Stat Distribution ({pet_type_korean} - Pure Stats){' (Excluding HP)' if exclude_hp else ''}")
     ax.set_xlabel("Total Stat")
     ax.legend()
     st.pyplot(fig)
@@ -507,9 +509,3 @@ if st.session_state["calculated"]:
         st.write(f"🔹 {c_stat_name} 목표 도달 확률: **{probabilities[c_stat_name]:.2f}%**")
         st.write(f"🔹 {d_stat} (주 스탯) 목표 도달 확률: **{probabilities[d_stat]:.2f}%**")
         st.success(f"🎉 모든 목표를 동시에 만족할 확률: **{p_all:.2f}%**")
-
-
-
-
-
-
